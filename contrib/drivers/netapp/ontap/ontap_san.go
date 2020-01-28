@@ -18,6 +18,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"github.com/netapp/trident/storage_drivers/ontap/api/azgo"
 	"strconv"
 	"strings"
 
@@ -39,6 +40,14 @@ import (
 	"github.com/opensds/opensds/pkg/utils/config"
 )
 
+var (
+	d = SANDriver{}
+	initialize = d.sanStorageDriver.Initialize
+	create = d.sanStorageDriver.Create
+	createClone = d.sanStorageDriver.CreateClone
+	LunGetSerialNumber = func(lunPath string) (*azgo.LunGetSerialNumberResponse, error){return nil,nil}
+)
+
 func lunPath(name string) string {
 	return fmt.Sprintf("/vol/%v/lun0", name)
 }
@@ -56,7 +65,7 @@ func getSnapshotName(id string) string {
 // Get LUN Serial Number
 func (d *SANDriver) getLunSerialNumber(lunPath string) (string, error) {
 
-	lunSrNumber, err := d.sanStorageDriver.API.LunGetSerialNumber(lunPath)
+	lunSrNumber, err := LunGetSerialNumber(lunPath)
 	if err != nil {
 		return "", fmt.Errorf("problem reading maps for LUN %s: %v", lunPath, err)
 	}
@@ -148,12 +157,12 @@ func (d *SANDriver) Setup() error {
 	}
 
 	// Initialize the driver.
-	if err = d.sanStorageDriver.Initialize(driverContext, configJSON, commonConfig); err != nil {
+	if err = initialize(driverContext, configJSON, commonConfig); err != nil {
 		log.Errorf("could not initialize storage driver (%s). failed: %v", commonConfig.StorageDriverName, err)
 		return err
 	}
 	log.Infof("storage driver (%s) initialized successfully.", commonConfig.StorageDriverName)
-
+	LunGetSerialNumber = d.sanStorageDriver.API.LunGetSerialNumber
 	return nil
 }
 
@@ -179,7 +188,7 @@ func (d *SANDriver) CreateVolume(opt *pb.CreateVolumeOpts) (vol *model.VolumeSpe
 		InternalAttributes: make(map[string]string),
 	}
 
-	err = d.sanStorageDriver.Create(volConfig, storagePool, make(map[string]sa.Request))
+	err = create(volConfig, storagePool, make(map[string]sa.Request))
 	if err != nil {
 		log.Errorf("create volume (%s) failed: %v", opt.GetId(), err)
 		return nil, err
@@ -221,7 +230,7 @@ func (d *SANDriver) createVolumeFromSnapshot(opt *pb.CreateVolumeOpts) (*model.V
 	volConfig.CloneSourceSnapshot = volName
 	volConfig.CloneSourceSnapshot = snapName
 
-	err := d.sanStorageDriver.CreateClone(volConfig)
+	err := createClone(volConfig)
 	if err != nil {
 		log.Errorf("create volume (%s) from snapshot (%s) failed: %v", opt.GetId(), opt.GetSnapshotId(), err)
 		return nil, err
