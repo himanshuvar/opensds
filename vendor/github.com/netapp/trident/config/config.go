@@ -33,11 +33,13 @@ const (
 	/* Misc. orchestrator constants */
 	OrchestratorName                 = "trident"
 	OrchestratorClientName           = OrchestratorName + "ctl"
-	orchestratorVersion              = "19.10.0"
+	orchestratorVersion              = "20.01.0"
 	OrchestratorAPIVersion           = "1"
 	PersistentStoreBootstrapAttempts = 30
 	PersistentStoreBootstrapTimeout  = PersistentStoreBootstrapAttempts * time.Second
 	PersistentStoreTimeout           = 10 * time.Second
+	DockerCreateTimeout              = 115 * time.Second
+	DockerDefaultTimeout             = 55 * time.Second
 
 	/* REST/HTTP constants */
 	HTTPTimeout = 90 * time.Second
