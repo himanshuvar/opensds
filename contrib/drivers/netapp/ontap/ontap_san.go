@@ -45,6 +45,11 @@ var (
 	initialize = d.sanStorageDriver.Initialize
 	create = d.sanStorageDriver.Create
 	createClone = d.sanStorageDriver.CreateClone
+	destroy = d.sanStorageDriver.Destroy
+	resize = d.sanStorageDriver.Resize
+	publish = d.sanStorageDriver.Publish
+	createSnapshot = d.sanStorageDriver.CreateSnapshot
+	deleteSnapshot = d.sanStorageDriver.DeleteSnapshot
 	LunGetSerialNumber = func(lunPath string) (*azgo.LunGetSerialNumberResponse, error){return nil,nil}
 )
 
@@ -227,7 +232,7 @@ func (d *SANDriver) createVolumeFromSnapshot(opt *pb.CreateVolumeOpts) (*model.V
 
 	volConfig := d.GetVolumeConfig(name, opt.GetSize())
 	volConfig.CloneSourceVolumeInternal = volName
-	volConfig.CloneSourceSnapshot = volName
+	volConfig.CloneSourceVolume = volName
 	volConfig.CloneSourceSnapshot = snapName
 
 	err := createClone(volConfig)
@@ -254,6 +259,7 @@ func (d *SANDriver) createVolumeFromSnapshot(opt *pb.CreateVolumeOpts) (*model.V
 		Name:        opt.GetName(),
 		Size:        opt.GetSize(),
 		Description: opt.GetDescription(),
+		SnapshotId:  opt.GetSnapshotId(),
 		Identifier:  &model.Identifier{DurableName: lunSerialNumber, DurableNameFormat: KLvIdFormat},
 		Metadata: map[string]string{
 			KLvPath: lunPath,
@@ -268,7 +274,7 @@ func (d *SANDriver) PullVolume(volId string) (*model.VolumeSpec, error) {
 
 func (d *SANDriver) DeleteVolume(opt *pb.DeleteVolumeOpts) error {
 	var name = getVolumeName(opt.GetId())
-	err := d.sanStorageDriver.Destroy(name)
+	err := destroy(name)
 	if err != nil {
 		msg := fmt.Sprintf("delete volume (%s) failed: %v", opt.GetId(), err)
 		log.Error(msg)
@@ -284,7 +290,7 @@ func (d *SANDriver) ExtendVolume(opt *pb.ExtendVolumeOpts) (*model.VolumeSpec, e
 	volConfig := d.GetVolumeConfig(name, opt.GetSize())
 
 	newSize := uint64(opt.GetSize() * bytesGiB)
-	if err := d.sanStorageDriver.Resize(volConfig, newSize); err != nil {
+	if err := resize(volConfig, newSize); err != nil {
 		log.Errorf("extend volume (%s) failed, error: %v", name, err)
 		return nil, err
 	}
@@ -314,7 +320,7 @@ func (d *SANDriver) InitializeConnection(opt *pb.CreateVolumeAttachmentOpts) (*m
 		HostName: hostName,
 	}
 
-	err := d.sanStorageDriver.Publish(name, publishInfo)
+	err := publish(name, publishInfo)
 	if err != nil {
 		msg := fmt.Sprintf("volume (%s) attachment is failed: %v", opt.GetVolumeId(), err)
 		log.Errorf(msg)
@@ -375,7 +381,7 @@ func (d *SANDriver) CreateSnapshot(opt *pb.CreateVolumeSnapshotOpts) (snap *mode
 
 	snapConfig := d.GetSnapshotConfig(snapName, volName)
 
-	snapshot, err := d.sanStorageDriver.CreateSnapshot(snapConfig)
+	snapshot, err := createSnapshot(snapConfig)
 
 	if err != nil {
 		msg := fmt.Sprintf("create snapshot %s (%s) failed: %s", opt.GetName(), opt.GetId(), err)
@@ -397,7 +403,7 @@ func (d *SANDriver) CreateSnapshot(opt *pb.CreateVolumeSnapshotOpts) (snap *mode
 			"name":         snapName,
 			"volume":       volName,
 			"creationTime": snapshot.Created,
-			"size":         strconv.FormatInt(snapshot.SizeBytes/bytesGiB, 10) + "G",
+			"size":         strconv.FormatInt(snapshot.SizeBytes/bytesKiB, 10) + "K",
 		},
 	}, nil
 }
@@ -414,7 +420,7 @@ func (d *SANDriver) DeleteSnapshot(opt *pb.DeleteVolumeSnapshotOpts) error {
 
 	snapConfig := d.GetSnapshotConfig(snapName, volName)
 
-	err := d.sanStorageDriver.DeleteSnapshot(snapConfig)
+	err := deleteSnapshot(snapConfig)
 
 	if err != nil {
 		msg := fmt.Sprintf("delete volume snapshot (%s) failed: %v", opt.GetId(), err)

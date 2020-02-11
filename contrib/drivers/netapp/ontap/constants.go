@@ -29,4 +29,5 @@ const (
 	accessMode        = ""
 	volumeMode        = "Block"
 	bytesGiB           = 1073741824
+	bytesKiB          =  1048576
 )
