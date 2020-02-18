@@ -51,6 +51,9 @@ var (
 	createSnapshot = d.sanStorageDriver.CreateSnapshot
 	deleteSnapshot = d.sanStorageDriver.DeleteSnapshot
 	LunGetSerialNumber = func(lunPath string) (*azgo.LunGetSerialNumberResponse, error){return nil,nil}
+	VserverGetAggregateNames = func() ([]string, error) {return nil,nil}
+	AggregateCommitment= func(aggregate string) (*api.AggregateCommitment, error) {return nil,nil}
+	Terminate = d.sanStorageDriver.Terminate
 )
 
 func lunPath(name string) string {
@@ -168,12 +171,14 @@ func (d *SANDriver) Setup() error {
 	}
 	log.Infof("storage driver (%s) initialized successfully.", commonConfig.StorageDriverName)
 	LunGetSerialNumber = d.sanStorageDriver.API.LunGetSerialNumber
+	VserverGetAggregateNames = d.sanStorageDriver.API.VserverGetAggregateNames
+	AggregateCommitment = d.sanStorageDriver.API.AggregateCommitment
 	return nil
 }
 
 func (d *SANDriver) Unset() error {
 	//driver to clean up and stop any ongoing operations.
-	d.sanStorageDriver.Terminate()
+	Terminate()
 	return nil
 }
 
@@ -435,7 +440,7 @@ func (d *SANDriver) ListPools() ([]*model.StoragePoolSpec, error) {
 
 	var pools []*model.StoragePoolSpec
 
-	aggregates, err := d.sanStorageDriver.API.VserverGetAggregateNames()
+	aggregates, err := VserverGetAggregateNames() //d.sanStorageDriver.API.VserverGetAggregateNames()
 
 	if err != nil {
 		msg := fmt.Sprintf("list pools failed: %v", err)
@@ -448,7 +453,7 @@ func (d *SANDriver) ListPools() ([]*model.StoragePoolSpec, error) {
 		if _, ok := c.Pool[aggr]; !ok {
 			continue
 		}
-		aggregate, _ := d.sanStorageDriver.API.AggregateCommitment(aggr)
+		aggregate, _ := AggregateCommitment(aggr) //d.sanStorageDriver.API.AggregateCommitment(aggr)
 		aggregateCapacity := aggregate.AggregateSize / bytesGiB
 		aggregateAllocatedCapacity := aggregate.TotalAllocated / bytesGiB
 
@@ -463,6 +468,7 @@ func (d *SANDriver) ListPools() ([]*model.StoragePoolSpec, error) {
 			StorageType:      c.Pool[aggr].StorageType,
 			Extras:           c.Pool[aggr].Extras,
 			AvailabilityZone: c.Pool[aggr].AvailabilityZone,
+			MultiAttach:      c.Pool[aggr].MultiAttach,
 		}
 		if pool.AvailabilityZone == "" {
 			pool.AvailabilityZone = DefaultAZ

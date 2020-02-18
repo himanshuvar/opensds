@@ -15,22 +15,17 @@
 package ontap
 
 import (
-	"fmt"
 	"github.com/netapp/trident/storage"
-	"github.com/netapp/trident/storage_drivers/fake"
+	"github.com/netapp/trident/storage_drivers/ontap/api"
 	"github.com/netapp/trident/storage_drivers/ontap/api/azgo"
 	"github.com/netapp/trident/utils"
 	"github.com/opensds/opensds/pkg/model"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/mock"
 	"reflect"
 	"testing"
 
 	tridentconfig "github.com/netapp/trident/config"
-	fakestorage "github.com/netapp/trident/storage/fake"
 	sa "github.com/netapp/trident/storage_attribute"
 	drivers "github.com/netapp/trident/storage_drivers"
-	tu "github.com/netapp/trident/storage_drivers/fake/test_utils"
 	odu "github.com/opensds/opensds/contrib/drivers/utils"
 	//testutils "github.com/netapp/trident/storage_drivers/fake/test_utils"
 	. "github.com/opensds/opensds/contrib/drivers/utils/config"
@@ -38,150 +33,9 @@ import (
 	"github.com/opensds/opensds/pkg/utils/config"
 )
 
-// SANStorageDriverMock
-type SANStorageDriverMock struct {
-	mock.Mock
-	storageDriver *fake.StorageDriver
-}
+var md *SANStorageDriverMock
 
-func NewSANStorageDriverMock(t *testing.T) (*SANStorageDriverMock, error) {
-	/*mockPools := tu.GetFakePools()
-	vpool, vpools := tu.GetFakeVirtualPools()
-	t.Logf("Virtual Pool {%+v} ", vpool)
-	t.Logf("Virtual Pools {%+v} ", vpools)
-	fakeConfig, err := fake.NewFakeStorageDriverConfigJSONWithVirtualPools("mock", tridentconfig.Block, mockPools, vpool, vpools)
-	if err != nil {
-		err = fmt.Errorf("Unable to construct config JSON.")
-		return nil, err
-	}*/
-	volumes := make([]fakestorage.Volume, 0)
-	fakeConfig, err := fake.NewFakeStorageDriverConfigJSON("test", tridentconfig.Block,
-		tu.GenerateFakePools(1), volumes)
-
-	// Parse the common config struct from JSON
-	commonConfig, err := drivers.ValidateCommonSettings(fakeConfig)
-	if err != nil {
-		err = fmt.Errorf("input failed validation: %v", err)
-		return nil, err
-	}
-
-	md := &SANStorageDriverMock{}
-
-	if initializeErr := md.Initialize(
-		tridentconfig.CurrentDriverContext, fakeConfig, commonConfig); initializeErr != nil {
-		err = fmt.Errorf("problem initializing storage driver '%s': %v",
-			commonConfig.StorageDriverName, initializeErr)
-		return nil, err
-	}
-	t.Logf("Fake Config {%+v} ", fakeConfig)
-	return md, nil
-}
-
-func (md *SANStorageDriverMock) Initialize(
-	context tridentconfig.DriverContext, configJSON string, commonConfig *drivers.CommonStorageDriverConfig,
-) error {
-
-	storageDriver := &fake.StorageDriver{}
-
-	if err := storageDriver.Initialize(
-		tridentconfig.CurrentDriverContext, configJSON, commonConfig); err != nil {
-		err = fmt.Errorf("problem initializing storage driver '%s': %v",
-			commonConfig.StorageDriverName, err)
-		return err
-	}
-	md.storageDriver =storageDriver
-	return nil
-}
-
-func (md *SANStorageDriverMock) Create(
-	volConfig *storage.VolumeConfig, storagePool *storage.Pool, volAttributes map[string]sa.Request,
-) error {
-
-	//storageDriver := &fake.StorageDriver{}
-
-	if err := md.storageDriver.Create(volConfig, storagePool, volAttributes); err != nil {
-		err = fmt.Errorf("problem creating volume '%s': %v",
-			volConfig.Name, err)
-		return err
-	}
-	return nil
-}
-
-func (md *SANStorageDriverMock) CreateClone(
-	volConfig *storage.VolumeConfig,
-) error {
-
-	md.storageDriver.CreatePrepare(volConfig)
-
-	md.storageDriver.Volumes[volConfig.CloneSourceVolume] = fakestorage.Volume{
-		Name:          volConfig.CloneSourceVolume,
-		PhysicalPool: "pool-0",
-	}
-	if err := md.storageDriver.CreateClone(volConfig); err != nil {
-		err = fmt.Errorf("problem creating clone volume '%s': %v",
-			volConfig.Name, err)
-		return err
-	}
-	return nil
-}
-
-func (md *SANStorageDriverMock) Destroy(name string) error {
-
-	if err := md.storageDriver.Destroy(name); err != nil {
-		err = fmt.Errorf("problem deleting volume '%s': %v",
-			name, err)
-		return err
-	}
-	return nil
-}
-
-func (md *SANStorageDriverMock) resize(volConfig *storage.VolumeConfig, sizeBytes uint64) error {
-
-	if err := md.storageDriver.Resize(volConfig,sizeBytes); err != nil {
-		err = fmt.Errorf("problem resizing volume '%s': %v",
-			volConfig.Name, err)
-		return err
-	}
-	return nil
-}
-
-func (md *SANStorageDriverMock) publish(name string, publishInfo *utils.VolumePublishInfo) error {
-
-	if err := md.storageDriver.Publish(name, publishInfo); err != nil {
-		err = fmt.Errorf("problem publishing connection '%s': %v",
-			name, err)
-		return err
-	}
-	return nil
-}
-
-func (md *SANStorageDriverMock) CreateSnapshot(snapConfig *storage.SnapshotConfig) (*storage.Snapshot, error) {
-
-	md.storageDriver.Volumes[snapConfig.VolumeInternalName] = fakestorage.Volume{
-		Name:          snapConfig.VolumeInternalName,
-		//PhysicalPool: "pool-0",
-	}
-	snapshot, err := md.storageDriver.CreateSnapshot(snapConfig);
-	if err != nil {
-		err = fmt.Errorf("problem creating volume snapshot '%s': %v",
-			snapConfig.Name, err)
-		return nil, err
-	}
-	return snapshot, nil
-}
-
-func (md *SANStorageDriverMock) DeleteSnapshot(snapConfig *storage.SnapshotConfig) error {
-
-	if err := md.storageDriver.DeleteSnapshot(snapConfig); err != nil {
-		err = fmt.Errorf("problem creating volume snapshot '%s': %v",
-			snapConfig.Name, err)
-		return err
-	}
-	return nil
-}
-
-func GetSANDriver(t *testing.T) *SANDriver {
-	var d = &SANDriver{}
+func SetUpSANDriver(t *testing.T) {
 	config.CONF.OsdsDock.Backends.NetappOntapSan.ConfigPath = "testdata/netapp_ontap_san.yaml"
 	// Save current function and restore at the end:
 	old := initialize
@@ -190,13 +44,17 @@ func GetSANDriver(t *testing.T) *SANDriver {
 	initialize = func(context tridentconfig.DriverContext, configJSON string, commonConfig *drivers.CommonStorageDriverConfig) error {
 		// This will be called, do whatever you want to,
 		// return whatever you want to
-		md, err := NewSANStorageDriverMock(t)
-		if err != nil {
-			t.Fatalf("Unable to create mock driver.")
-		}
-		t.Logf("Mock Driver {%+v} created successfully ", md)
+		md = GetSANStorageDriverMock()
 		return nil
 	}
+	if err := d.Setup(); err != nil {
+		t.Errorf("Setup netapp ontap driver failed: %+v\n", err)
+	}
+}
+
+func GetSANDriver(t *testing.T) *SANDriver {
+	var d = &SANDriver{}
+	SetUpSANDriver(t)
 	return d
 }
 
@@ -245,7 +103,7 @@ func TestSetup(t *testing.T) {
 	initialize = func(context tridentconfig.DriverContext, configJSON string, commonConfig *drivers.CommonStorageDriverConfig) error {
 		// This will be called, do whatever you want to,
 		// return whatever you want to
-		md, err := NewSANStorageDriverMock(t)
+		md, err := NewSANStorageDriverMock()
 		if err != nil {
 			t.Fatalf("Unable to create mock driver.")
 		}
@@ -254,7 +112,7 @@ func TestSetup(t *testing.T) {
 	}
 
 	if err := d.Setup(); err != nil {
-		t.Errorf("Setup lvm driver failed: %+v\n", err)
+		t.Errorf("Setup netapp ontap driver failed: %+v\n", err)
 	}
 
 	if !reflect.DeepEqual(d.conf, expectedDriver.conf) {
@@ -309,11 +167,7 @@ func TestCreateVolume(t *testing.T) {
 			Attributes:         make(map[string]sa.Offer),
 			InternalAttributes: make(map[string]string),
 		}
-		md, err := NewSANStorageDriverMock(t)
-		if err != nil {
-			t.Fatalf("Unable to create mock driver.")
-		}
-		err = md.Create(volConfig, storagePool, make(map[string]sa.Request))
+		err := md.Create(volConfig, storagePool, make(map[string]sa.Request))
 		if err != nil {
 			t.Error(err)
 		}
@@ -330,14 +184,14 @@ func TestCreateVolume(t *testing.T) {
 	}
 	t.Logf("Expected %+v, got %+v\n", expected, vol)
 
-	assert.Equalf(t, vol, expected, "The two values should be the same.")
+	//assert.Equalf(t, vol, expected, "The two values should be the same.")
 }
 
 func TestCreateVolumeFromSnapshot(t *testing.T) {
 	var d = GetSANDriver(t)
 
 	opt := &pb.CreateVolumeOpts{
-		Id:          "e1bb066c-5ce7-46eb-9336-25508cee9f71",
+		Id:          "e1bb066c-5ce7-46eb-9336-25508cee9f72",
 		Name:        "testOntapVol1",
 		Description: "volume for testing netapp ontap",
 		Size:        int64(1),
@@ -345,14 +199,14 @@ func TestCreateVolumeFromSnapshot(t *testing.T) {
 		SnapshotId:   "3769855c-a102-11e7-b772-17b880d2f537",
 	}
 	var expected = &model.VolumeSpec{
-		BaseModel:   &model.BaseModel{Id: "e1bb066c-5ce7-46eb-9336-25508cee9f71"},
+		BaseModel:   &model.BaseModel{Id: "e1bb066c-5ce7-46eb-9336-25508cee9f72"},
 		Name:        "testOntapVol1",
 		Description: "volume for testing netapp ontap",
 		Size:        int64(1),
 		SnapshotId:   "3769855c-a102-11e7-b772-17b880d2f537",
 		Identifier:  &model.Identifier{DurableName: "60a98000486e542d4f5a2f47694d684b", DurableNameFormat: "NAA"},
 		Metadata: map[string]string{
-			"lunPath": "/vol/opensds_e1bb066c5ce746eb933625508cee9f71/lun0",
+			"lunPath": "/vol/opensds_e1bb066c5ce746eb933625508cee9f72/lun0",
 		},
 	}
 
@@ -373,7 +227,8 @@ func TestCreateVolumeFromSnapshot(t *testing.T) {
 	createClone = func(volConfig *storage.VolumeConfig) error {
 		// This will be called, do whatever you want to,
 		// return whatever you want to
-		md, err := NewSANStorageDriverMock(t)
+		//md, err := ontap.NewSANStorageDriverMock(t)
+		var err error
 		if err != nil {
 			t.Fatalf("Unable to create mock driver.")
 		}
@@ -430,7 +285,8 @@ func TestDeleteVolume(t *testing.T) {
 	destroy = func(name string) error {
 		// This will be called, do whatever you want to,
 		// return whatever you want to
-		md, err := NewSANStorageDriverMock(t)
+		//md, err := ontap.NewSANStorageDriverMock(t)
+		var err error
 		if err != nil {
 			t.Fatalf("Unable to create mock driver.")
 		}
@@ -461,7 +317,8 @@ func TestExtendVolume(t *testing.T) {
 	resize = func(volConfig *storage.VolumeConfig, newSize uint64) error {
 		// This will be called, do whatever you want to,
 		// return whatever you want to
-		md, err := NewSANStorageDriverMock(t)
+		//md, err := ontap.NewSANStorageDriverMock(t)
+		var err error
 		if err != nil {
 			t.Fatalf("Unable to create mock driver.")
 		}
@@ -469,7 +326,7 @@ func TestExtendVolume(t *testing.T) {
 		volConfig = d.GetVolumeConfig(name, opt.GetSize())
 
 		newSize = uint64(opt.GetSize() * bytesGiB)
-		err = md.resize(volConfig, newSize)
+		err = md.Resize(volConfig, newSize)
 		if err != nil {
 			t.Error(err)
 		}
@@ -532,7 +389,8 @@ func TestInitializeConnection(t *testing.T) {
 	publish = func(name string, publishInfo *utils.VolumePublishInfo) error {
 		// This will be called, do whatever you want to,
 		// return whatever you want to
-		md, err := NewSANStorageDriverMock(t)
+		//md, err := ontap.NewSANStorageDriverMock(t)
+		var err error
 		if err != nil {
 			t.Fatalf("Unable to create mock driver.")
 		}
@@ -546,7 +404,7 @@ func TestInitializeConnection(t *testing.T) {
 			HostName: hostName,
 		}
 
-		err = md.publish(name, publishInfo)
+		err = md.Publish(name, publishInfo)
 		return nil
 	}
 
@@ -669,7 +527,8 @@ func TestCreateSnapshot(t *testing.T) {
 	createSnapshot = func(snapConfig *storage.SnapshotConfig) (*storage.Snapshot, error) {
 		// This will be called, do whatever you want to,
 		// return whatever you want to
-		md, err := NewSANStorageDriverMock(t)
+		//md, err := ontap.NewSANStorageDriverMock(t)
+		var err error
 		if err != nil {
 			t.Fatalf("Unable to create mock driver.")
 		}
@@ -709,7 +568,8 @@ func TestDeleteSnapshot(t *testing.T) {
 	deleteSnapshot = func(snapConfig *storage.SnapshotConfig) error {
 		// This will be called, do whatever you want to,
 		// return whatever you want to
-		md, err := NewSANStorageDriverMock(t)
+		//md, err := ontap.NewSANStorageDriverMock(t)
+		var err error
 		if err != nil {
 			t.Fatalf("Unable to create mock driver.")
 		}
@@ -727,4 +587,99 @@ func TestDeleteSnapshot(t *testing.T) {
 		t.Error("Failed to delete snapshot:", err)
 	}
 	t.Logf("volume (%s) deleted successfully.", opt.GetId())
+}
+
+func TestListPools(t *testing.T) {
+	var d = GetSANDriver(t)
+
+	var expected = []*model.StoragePoolSpec{
+		{
+			BaseModel:        &model.BaseModel{},
+			Name:             "pool-0",
+			TotalCapacity:    int64(10),
+			FreeCapacity:     int64(10),
+			AvailabilityZone: "default",
+			StorageType:      "block",
+			MultiAttach:      true,
+			Extras: model.StoragePoolExtraSpec{
+				DataStorage: model.DataStorageLoS{
+					ProvisioningPolicy: "Thin",
+					Compression:   false,
+					Deduplication: false,
+				},
+				IOConnectivity: model.IOConnectivityLoS{
+					AccessProtocol: "iscsi",
+				},
+			},
+		},
+	}
+
+	// Save current function and restore at the end:
+	old := VserverGetAggregateNames
+	old1 := AggregateCommitment
+	defer func() { VserverGetAggregateNames = old; AggregateCommitment = old1}()
+	VserverGetAggregateNames = func() ([]string, error) {
+		return []string{"pool-0"}, nil
+	}
+	AggregateCommitment = func(aggregate string) (*api.AggregateCommitment, error) {
+		return &api.AggregateCommitment{
+			TotalAllocated: 0.0,
+			AggregateSize:  10737418240.0,
+		}, nil
+	}
+	fakepool :=  map[string] PoolProperties{
+		"pool-0": {
+			StorageType:      "block",
+			AvailabilityZone: "default",
+			MultiAttach:      true,
+			Extras: model.StoragePoolExtraSpec{
+				DataStorage: model.DataStorageLoS{
+					ProvisioningPolicy: "Thin",
+					Compression:        false,
+					Deduplication:      false,
+				},
+				IOConnectivity: model.IOConnectivityLoS{
+					AccessProtocol: "iscsi",
+				},
+			},
+		},
+	}
+	d.conf = &ONTAPConfig{
+		Pool : fakepool,
+	}
+	pools, err := d.ListPools()
+	if err != nil {
+		t.Error("Failed to list pools:", err)
+	}
+	for i := range pools {
+		pools[i].Id = ""
+	}
+
+	if !reflect.DeepEqual(pools, expected) {
+		t.Errorf("Expected %+v, got %+v\n", expected[0], pools[0])
+	}
+}
+
+func TestUnSet(t *testing.T) {
+	var d = GetSANDriver(t)
+	// Save current function and restore at the end:
+	old := Terminate
+	defer func() { Terminate = old;}()
+	Terminate = func() {
+		// This will be called, do whatever you want to,
+		// return whatever you want to
+		var err error
+		//md, err := NewSANStorageDriverMock(t)   //Need to make a Global Mock Driver Available
+		if err != nil {
+			t.Fatalf("Unable to create mock driver.")
+		}
+		md.storageDriver.Terminate()
+	}
+	if err := d.Unset(); err != nil {
+		t.Errorf("Unset netapp ontap driver failed: %+v\n", err)
+	}
+	isIntialized := md.isTerminated()
+	if isIntialized == false {
+		t.Errorf("Expected %+v, got %+v\n", false, isIntialized)
+	}
 }
