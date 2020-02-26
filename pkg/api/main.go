@@ -28,7 +28,6 @@ import (
 	"github.com/opensds/opensds/pkg/api/filter/accesslog"
 	"github.com/opensds/opensds/pkg/api/filter/auth"
 	"github.com/opensds/opensds/pkg/api/filter/context"
-	"github.com/opensds/opensds/pkg/api/filter/validation"
 	cfg "github.com/opensds/opensds/pkg/utils/config"
 	"github.com/opensds/opensds/pkg/utils/constants"
 
@@ -41,21 +40,21 @@ const (
 	PortIdx
 )
 
-func Run(apiServerCfg cfg.OsdsApiServer) {
+func Run(dockApiServerCfg cfg.OsdsDock) {
 
-	if apiServerCfg.HTTPSEnabled {
-		if apiServerCfg.BeegoHTTPSCertFile == "" || apiServerCfg.BeegoHTTPSKeyFile == "" {
+	if dockApiServerCfg.HTTPSEnabled {
+		if dockApiServerCfg.BeegoHTTPSCertFile == "" || dockApiServerCfg.BeegoHTTPSKeyFile == "" {
 			fmt.Println("If https is enabled in hotpot, please ensure key file and cert file of the hotpot are not empty.")
 			return
 		}
 		// beego https config
 		beego.BConfig.Listen.EnableHTTP = false
 		beego.BConfig.Listen.EnableHTTPS = true
-		strs := strings.Split(apiServerCfg.ApiEndpoint, ":")
+		strs := strings.Split(dockApiServerCfg.RestEndpoint, ":")
 		beego.BConfig.Listen.HTTPSAddr = strs[AddressIdx]
 		beego.BConfig.Listen.HTTPSPort, _ = strconv.Atoi(strs[PortIdx])
-		beego.BConfig.Listen.HTTPSCertFile = apiServerCfg.BeegoHTTPSCertFile
-		beego.BConfig.Listen.HTTPSKeyFile = apiServerCfg.BeegoHTTPSKeyFile
+		beego.BConfig.Listen.HTTPSCertFile = dockApiServerCfg.BeegoHTTPSCertFile
+		beego.BConfig.Listen.HTTPSKeyFile = dockApiServerCfg.BeegoHTTPSKeyFile
 		tlsConfig := &tls.Config{
 			MinVersion: tls.VersionTLS12,
 			CipherSuites: []uint16{
@@ -68,7 +67,7 @@ func Run(apiServerCfg cfg.OsdsApiServer) {
 		beego.BeeApp.Server.TLSConfig = tlsConfig
 	}
 
-	beego.BConfig.Listen.ServerTimeOut = apiServerCfg.BeegoServerTimeOut
+	beego.BConfig.Listen.ServerTimeOut = dockApiServerCfg.BeegoServerTimeOut
 	beego.BConfig.CopyRequestBody = true
 	beego.BConfig.EnableErrorsShow = false
 	beego.BConfig.EnableErrorsRender = false
@@ -78,8 +77,8 @@ func Run(apiServerCfg cfg.OsdsApiServer) {
 	beego.InsertFilter(pattern, beego.BeforeExec, context.Factory())
 	beego.InsertFilter(pattern, beego.BeforeExec, auth.Factory())
 	beego.InsertFilter("*", beego.BeforeExec, accesslog.Factory())
-	beego.InsertFilter("*", beego.BeforeExec, validation.Factory(apiServerCfg.ApiSpecPath))
+	//beego.InsertFilter("*", beego.BeforeExec, validation.Factory(dockApiServerCfg.ApiSpecPath))
 
 	// start service
-	beego.Run(apiServerCfg.ApiEndpoint)
+	beego.Run(dockApiServerCfg.RestEndpoint)
 }

@@ -21,9 +21,7 @@ Go SDK.
 package manila
 
 import (
-	"encoding/json"
 	"errors"
-	"fmt"
 	"strings"
 	"time"
 
@@ -153,15 +151,15 @@ func (d *Driver) ListPools() ([]*model.StoragePoolSpec, error) {
 
 // CreateFileShare implementation
 func (d *Driver) CreateFileShare(opt *pb.CreateFileShareOpts) (*model.FileShareSpec, error) {
-	prf := opt.GetProfile()
+	/*prf := opt.GetProfile()
 	shareProto, err := d.GetProtoFromProfile(prf)
 	if err != nil {
 		return nil, err
-	}
+	}*/
 
 	// Configure create request body.
 	opts := &sharesv2.CreateOpts{
-		ShareProto:  shareProto,
+		//ShareProto:  shareProto,
 		Size:        int(opt.GetSize()),
 		Name:        opt.GetName(),
 		Description: opt.GetDescription(),
@@ -224,7 +222,7 @@ func (d *Driver) CreateFileShare(opt *pb.CreateFileShareOpts) (*model.FileShareS
 			Id: opt.GetId(),
 		},
 		Name:             opt.GetName(),
-		Protocols:        []string{shareProto},
+		//Protocols:        []string{shareProto},
 		Description:      opt.GetDescription(),
 		Size:             opt.GetSize(),
 		AvailabilityZone: opt.GetAvailabilityZone(),
@@ -441,7 +439,7 @@ func (d *Driver) PullFileShareSnapshot(ID string) (*model.FileShareSnapshotSpec,
 }
 
 // GetProtoFromProfile implementation
-func (d *Driver) GetProtoFromProfile(prf string) (string, error) {
+/*func (d *Driver) GetProtoFromProfile(prf string) (string, error) {
 	if prf == "" {
 		msg := "profile cannot be empty"
 		return "", errors.New(msg)
@@ -462,4 +460,4 @@ func (d *Driver) GetProtoFromProfile(prf string) (string, error) {
 	}
 
 	return shareProto, nil
-}
+}*/

@@ -45,16 +45,6 @@ func init() {
 			// Show one dock service, including endpoint, driverName and so on
 			beego.NSRouter("/:tenantId/docks/:dockId", &controllers.DockPortal{}, "get:GetDock"),
 
-			// Profile is a set of policies configured by admin and provided for users
-			// CreateProfile, UpdateProfile and DeleteProfile are used for admin only
-			// ListProfiles and GetProfile are used for both admin and users
-			beego.NSRouter("/:tenantId/profiles", &controllers.ProfilePortal{}, "post:CreateProfile;get:ListProfiles"),
-			beego.NSRouter("/:tenantId/profiles/:profileId", &controllers.ProfilePortal{}, "get:GetProfile;put:UpdateProfile;delete:DeleteProfile"),
-
-			// All operations of customProperties are used for admin only
-			beego.NSRouter("/:tenantId/profiles/:profileId/customProperties", &controllers.ProfilePortal{}, "post:AddCustomProperty;get:ListCustomProperties"),
-			beego.NSRouter("/:tenantId/profiles/:profileId/customProperties/:customKey", &controllers.ProfilePortal{}, "delete:RemoveCustomProperty"),
-
 			// Pool is the virtual description of backend storage, usually divided into block, file and object,
 			// and every pool is atomic, which means every pool contains a specific set of features.
 			// ListPools and GetPool are used for checking the status of backend pool, admin only
@@ -64,7 +54,4 @@ func init() {
 		)
 	beego.AddNamespace(ns)
 
-	// add router for api version
-	beego.Router("/", &controllers.VersionPortal{}, "get:ListVersions")
-	beego.Router("/:apiVersion", &controllers.VersionPortal{}, "get:GetVersion")
 }

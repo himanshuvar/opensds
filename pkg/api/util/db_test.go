@@ -42,7 +42,6 @@ func TestCreateVolumeDBEntry(t *testing.T) {
 		Name:        "volume sample",
 		Description: "This is a sample volume for testing",
 		Size:        int64(1),
-		ProfileId:   "3769855c-a102-11e7-b772-17b880d2f537",
 		Status:      model.VolumeCreating,
 	}
 
@@ -70,14 +69,14 @@ func TestCreateVolumeDBEntry(t *testing.T) {
 		assertTestResult(t, err.Error(), expectedError)
 	})
 
-	t.Run("The profile id should not be empty", func(t *testing.T) {
-		in.Size, in.ProfileId = int64(1), ""
+	t.Run("The pool id should not be empty", func(t *testing.T) {
+		in.Size, in.PoolId = int64(1), ""
 		mockClient := new(dbtest.Client)
 		mockClient.On("CreateVolume", context.NewAdminContext(), in).Return(&SampleVolumes[0], nil)
 		db.C = mockClient
 
 		_, err := CreateVolumeDBEntry(context.NewAdminContext(), in)
-		expectedError := "profile id can not be empty when creating volume in db"
+		expectedError := "pool id can not be empty when creating volume in db"
 		assertTestResult(t, err.Error(), expectedError)
 	})
 }
@@ -88,7 +87,6 @@ func TestCreateVolumeFromSnapshotDBEntry(t *testing.T) {
 		Name:        "volume sample",
 		Description: "This is a sample volume for testing",
 		Size:        int64(1),
-		ProfileId:   "3769855c-a102-11e7-b772-17b880d2f537",
 		Status:      model.VolumeCreating,
 		SnapshotId:  "3769855c-a102-11e7-b772-17b880d2f537",
 	}
@@ -145,7 +143,6 @@ func TestDeleteVolumeDBEntry(t *testing.T) {
 			Id: "bd5b12a8-a101-11e7-941e-d77981b584d8",
 		},
 		Status:    model.VolumeAvailable,
-		ProfileId: "3769855c-a102-11e7-b772-17b880d2f537",
 		PoolId:    "3762355c-a102-11e7-b772-17b880d2f537",
 	}
 	var in = &model.VolumeSpec{
@@ -153,7 +150,6 @@ func TestDeleteVolumeDBEntry(t *testing.T) {
 			Id: "bd5b12a8-a101-11e7-941e-d77981b584d8",
 		},
 		Status:    model.VolumeDeleting,
-		ProfileId: "3769855c-a102-11e7-b772-17b880d2f537",
 		PoolId:    "3762355c-a102-11e7-b772-17b880d2f537",
 	}
 
@@ -275,7 +271,6 @@ func TestCreateVolumeSnapshotDBEntry(t *testing.T) {
 		Name:        "sample-snapshot-01",
 		Description: "This is the first sample snapshot for testing",
 		Size:        int64(1),
-		ProfileId:   "3769855c-a102-11e7-b772-17b880d2f537",
 		Status:      "creating",
 		Metadata:    map[string]string{"a": "a"},
 	}
@@ -292,18 +287,6 @@ func TestCreateVolumeSnapshotDBEntry(t *testing.T) {
 			t.Errorf("failed to create volume snapshot, err is %v\n", err)
 		}
 		assertTestResult(t, result, expected)
-	})
-
-	t.Run("The profile id should not be empty", func(t *testing.T) {
-		req.ProfileId = ""
-		mockClient := new(dbtest.Client)
-		mockClient.On("GetVolume", context.NewAdminContext(), "bd5b12a8-a101-11e7-941e-d77981b584d8").Return(vol, nil)
-		mockClient.On("CreateVolumeSnapshot", context.NewAdminContext(), req).Return(&SampleSnapshots[0], nil)
-		db.C = mockClient
-
-		_, err := CreateVolumeSnapshotDBEntry(context.NewAdminContext(), req)
-		expectedError := "profile id can not be empty when creating volume snapshot in db"
-		assertTestResult(t, err.Error(), expectedError)
 	})
 }
 
@@ -345,7 +328,6 @@ func TestCreateFileShareSnapshotDBEntry(t *testing.T) {
 		Status:      "available",
 		ShareSize:   int64(1),
 		FileShareId: "bd5b12a8-a101-11e7-941e-d77981b584d8",
-		ProfileId:   "1106b972-66ef-11e7-b172-db03f3689c9c",
 	}
 
 	var sampleSnapshots = []*model.FileShareSnapshotSpec{&SampleShareSnapshots[0]}
@@ -383,7 +365,6 @@ func TestCreateFileShareDBEntry(t *testing.T) {
 		Name:        "sample-fileshare-01",
 		Description: "This is a sample fileshare for testing",
 		Size:        int64(1),
-		ProfileId:   "b3585ebe-c42c-120g-b28e-f373746a71ca",
 		Status:      model.FileShareCreating,
 	}
 
@@ -411,19 +392,19 @@ func TestCreateFileShareDBEntry(t *testing.T) {
 		assertTestResult(t, err.Error(), expectedError)
 	})
 
-	t.Run("The profile id should not be empty", func(t *testing.T) {
-		in.ProfileId = ""
+	t.Run("The pool id should not be empty", func(t *testing.T) {
+		in.PoolId = ""
 		mockClient := new(dbtest.Client)
 		mockClient.On("CreateFileShare", context.NewAdminContext(), in).Return(&SampleFileShares[0], nil)
 		db.C = mockClient
 
 		_, err := CreateFileShareDBEntry(context.NewAdminContext(), in)
-		expectedError := "profile id can not be empty when creating fileshare in db!"
+		expectedError := "pool id can not be empty when creating fileshare in db!"
 		assertTestResult(t, err.Error(), expectedError)
 	})
 
 	t.Run("Empty file share name is allowed", func(t *testing.T) {
-		in.Size, in.Name, in.ProfileId = int64(1), "", "b3585ebe-c42c-120g-b28e-f373746a71ca"
+		in.Size, in.Name, in.PoolId = int64(1), "", "b3585ebe-c42c-120g-b28e-f373746a71ca"
 		mockClient := new(dbtest.Client)
 		mockClient.On("CreateFileShare", context.NewAdminContext(), in).Return(&SampleFileShares[0], nil)
 		db.C = mockClient
@@ -435,7 +416,7 @@ func TestCreateFileShareDBEntry(t *testing.T) {
 
 	t.Run("File share name length equal to 0 character are not allowed", func(t *testing.T) {
 		in.Name = utils.RandSeqWithAlnum(0)
-		in.Size, in.ProfileId = int64(1), "b3585ebe-c42c-120g-b28e-f373746a71ca"
+		in.Size, in.PoolId = int64(1), "b3585ebe-c42c-120g-b28e-f373746a71ca"
 		mockClient := new(dbtest.Client)
 		mockClient.On("CreateFileShare", context.NewAdminContext(), in).Return(&SampleFileShares[0], nil)
 		db.C = mockClient
@@ -447,7 +428,7 @@ func TestCreateFileShareDBEntry(t *testing.T) {
 
 	t.Run("File share name length equal to 1 character are allowed", func(t *testing.T) {
 		in.Name = utils.RandSeqWithAlnum(1)
-		in.Size, in.ProfileId = int64(1), "b3585ebe-c42c-120g-b28e-f373746a71ca"
+		in.Size, in.PoolId = int64(1), "b3585ebe-c42c-120g-b28e-f373746a71ca"
 		mockClient := new(dbtest.Client)
 		mockClient.On("CreateFileShare", context.NewAdminContext(), in).Return(&SampleFileShares[0], nil)
 		db.C = mockClient
@@ -462,7 +443,7 @@ func TestCreateFileShareDBEntry(t *testing.T) {
 
 	t.Run("File share name length equal to 10 characters are allowed", func(t *testing.T) {
 		in.Name = utils.RandSeqWithAlnum(10)
-		in.Size, in.ProfileId = int64(1), "b3585ebe-c42c-120g-b28e-f373746a71ca"
+		in.Size, in.PoolId = int64(1), "b3585ebe-c42c-120g-b28e-f373746a71ca"
 		mockClient := new(dbtest.Client)
 		mockClient.On("CreateFileShare", context.NewAdminContext(), in).Return(&SampleFileShares[0], nil)
 		db.C = mockClient
@@ -477,7 +458,7 @@ func TestCreateFileShareDBEntry(t *testing.T) {
 
 	t.Run("File share name length equal to 254 characters are allowed", func(t *testing.T) {
 		in.Name = utils.RandSeqWithAlnum(254)
-		in.Size, in.ProfileId = int64(1), "b3585ebe-c42c-120g-b28e-f373746a71ca"
+		in.Size, in.PoolId = int64(1), "b3585ebe-c42c-120g-b28e-f373746a71ca"
 		mockClient := new(dbtest.Client)
 		mockClient.On("CreateFileShare", context.NewAdminContext(), in).Return(&SampleFileShares[0], nil)
 		db.C = mockClient
@@ -492,7 +473,7 @@ func TestCreateFileShareDBEntry(t *testing.T) {
 
 	t.Run("File share name length equal to 255 characters are allowed", func(t *testing.T) {
 		in.Name = utils.RandSeqWithAlnum(255)
-		in.Size, in.ProfileId = int64(1), "b3585ebe-c42c-120g-b28e-f373746a71ca"
+		in.Size, in.PoolId = int64(1), "b3585ebe-c42c-120g-b28e-f373746a71ca"
 		mockClient := new(dbtest.Client)
 		mockClient.On("CreateFileShare", context.NewAdminContext(), in).Return(&SampleFileShares[0], nil)
 		db.C = mockClient
@@ -507,7 +488,7 @@ func TestCreateFileShareDBEntry(t *testing.T) {
 
 	t.Run("File share name length more than 255 characters are not allowed", func(t *testing.T) {
 		in.Name = utils.RandSeqWithAlnum(256)
-		in.Size, in.ProfileId = int64(1), "b3585ebe-c42c-120g-b28e-f373746a71ca"
+		in.Size, in.PoolId = int64(1), "b3585ebe-c42c-120g-b28e-f373746a71ca"
 		mockClient := new(dbtest.Client)
 		mockClient.On("CreateFileShare", context.NewAdminContext(), in).Return(&SampleFileShares[0], nil)
 		db.C = mockClient
@@ -519,7 +500,7 @@ func TestCreateFileShareDBEntry(t *testing.T) {
 
 	t.Run("File share name length more than 255 characters are not allowed", func(t *testing.T) {
 		in.Name = utils.RandSeqWithAlnum(257)
-		in.Size, in.ProfileId = int64(1), "b3585ebe-c42c-120g-b28e-f373746a71ca"
+		in.Size, in.PoolId = int64(1), "b3585ebe-c42c-120g-b28e-f373746a71ca"
 		mockClient := new(dbtest.Client)
 		mockClient.On("CreateFileShare", context.NewAdminContext(), in).Return(&SampleFileShares[0], nil)
 		db.C = mockClient
@@ -536,7 +517,6 @@ func TestDeleteFileShareDBEntry(t *testing.T) {
 			Id: "bd5b12a8-a101-11e7-941e-d77981b584d8",
 		},
 		Status:    model.FileShareAvailable,
-		ProfileId: "3769855c-a102-11e7-b772-17b880d2f537",
 		PoolId:    "3762355c-a102-11e7-b772-17b880d2f537",
 	}
 	var in = &model.FileShareSpec{
@@ -544,7 +524,6 @@ func TestDeleteFileShareDBEntry(t *testing.T) {
 			Id: "bd5b12a8-a101-11e7-941e-d77981b584d8",
 		},
 		Status:    model.FileShareInUse,
-		ProfileId: "3769855c-a102-11e7-b772-17b880d2f537",
 		PoolId:    "3762355c-a102-11e7-b772-17b880d2f537",
 	}
 	t.Run("FileShare to be deleted should not be in-use", func(t *testing.T) {
@@ -611,7 +590,6 @@ func TestDeleteFileShareAclDBEntry(t *testing.T) {
 			Id: "d2975ebe-d82c-430f-b28e-f373746a71ca",
 		},
 		Status:           model.FileShareAclAvailable,
-		ProfileId:        "3769855c-a102-11e7-b772-17b880d2f537",
 		FileShareId:      "bd5b12a8-a101-11e7-941e-d77981b584d8",
 		Type:             "ip",
 		AccessTo:         "10.21.23.10",
@@ -622,7 +600,6 @@ func TestDeleteFileShareAclDBEntry(t *testing.T) {
 			Id: "d2975ebe-d82c-430f-b28e-f373746a71ca",
 		},
 		Status:           model.FileShareAclDeleting,
-		ProfileId:        "3769855c-a102-11e7-b772-17b880d2f537",
 		FileShareId:      "bd5b12a8-a101-11e7-941e-d77981b584d8",
 		Type:             "ip",
 		AccessTo:         "10.21.23.10",
@@ -663,7 +640,6 @@ func TestCreateFileShareAclDBEntry(t *testing.T) {
 			Id: "6ad25d59-a160-45b2-8920-211be282e2df",
 		},
 		Description:      "This is a sample Acl for testing",
-		ProfileId:        "1106b972-66ef-11e7-b172-db03f3689c9c",
 		Type:             "ip",
 		AccessCapability: []string{"Read", "Write"},
 		AccessTo:         "10.32.109.15",
@@ -684,20 +660,8 @@ func TestCreateFileShareAclDBEntry(t *testing.T) {
 		assertTestResult(t, result, expected)
 	})
 
-	t.Run("If profile id is empty", func(t *testing.T) {
-		in.ProfileId = ""
-		mockClient := new(dbtest.Client)
-		mockClient.On("GetFileShare", context.NewAdminContext(), in.FileShareId).Return(&SampleFileShares[0], nil)
-		mockClient.On("CreateFileShareAcl", context.NewAdminContext(), in).Return(&SampleFileSharesAcl[2], nil)
-		db.C = mockClient
-
-		_, err := CreateFileShareAclDBEntry(context.NewAdminContext(), in)
-		expectedError := "profile id can not be empty when creating fileshare acl in db!"
-		assertTestResult(t, err.Error(), expectedError)
-	})
-
 	t.Run("Invalid Access Type", func(t *testing.T) {
-		in.ProfileId, in.Type = "d2975ebe-d82c-430f-b28e-f373746a71ca", "system"
+		in.Type = "system"
 		mockClient := new(dbtest.Client)
 		mockClient.On("GetFileShare", context.NewAdminContext(), in.FileShareId).Return(&SampleFileShares[0], nil)
 		mockClient.On("CreateFileShareAcl", context.NewAdminContext(), in).Return(&SampleFileSharesAcl[2], nil)
@@ -709,7 +673,7 @@ func TestCreateFileShareAclDBEntry(t *testing.T) {
 	})
 
 	t.Run("Empty Access To", func(t *testing.T) {
-		in.ProfileId, in.Type, in.AccessTo = "d2975ebe-d82c-430f-b28e-f373746a71ca", "ip", ""
+		in.Type, in.AccessTo = "ip", ""
 		mockClient := new(dbtest.Client)
 		mockClient.On("GetFileShare", context.NewAdminContext(), in.FileShareId).Return(&SampleFileShares[0], nil)
 		mockClient.On("CreateFileShareAcl", context.NewAdminContext(), in).Return(&SampleFileSharesAcl[2], nil)
@@ -721,7 +685,7 @@ func TestCreateFileShareAclDBEntry(t *testing.T) {
 	})
 
 	t.Run("Invalid Ip Segment", func(t *testing.T) {
-		in.ProfileId, in.Type, in.AccessTo = "d2975ebe-d82c-430f-b28e-f373746a71ca", "ip", "201.100.101.8/9.9"
+		in.Type, in.AccessTo = "ip", "201.100.101.8/9.9"
 		mockClient := new(dbtest.Client)
 		mockClient.On("GetFileShare", context.NewAdminContext(), in.FileShareId).Return(&SampleFileShares[0], nil)
 		mockClient.On("CreateFileShareAcl", context.NewAdminContext(), in).Return(&SampleFileSharesAcl[2], nil)
@@ -733,7 +697,7 @@ func TestCreateFileShareAclDBEntry(t *testing.T) {
 	})
 
 	t.Run("Invalid Ip", func(t *testing.T) {
-		in.ProfileId, in.Type, in.AccessTo = "d2975ebe-d82c-430f-b28e-f373746a71ca", "ip", "201.100.101"
+		in.Type, in.AccessTo = "ip", "201.100.101"
 		mockClient := new(dbtest.Client)
 		mockClient.On("GetFileShare", context.NewAdminContext(), in.FileShareId).Return(&SampleFileShares[0], nil)
 		mockClient.On("CreateFileShareAcl", context.NewAdminContext(), in).Return(&SampleFileSharesAcl[2], nil)
@@ -745,7 +709,7 @@ func TestCreateFileShareAclDBEntry(t *testing.T) {
 	})
 
 	t.Run("Empty accesscapability", func(t *testing.T) {
-		in.ProfileId, in.Type, in.AccessTo, in.AccessCapability = "d2975ebe-d82c-430f-b28e-f373746a71ca", "ip", "201.100.101.9", []string{}
+		in.Type, in.AccessTo, in.AccessCapability = "ip", "201.100.101.9", []string{}
 		mockClient := new(dbtest.Client)
 		mockClient.On("GetFileShare", context.NewAdminContext(), in.FileShareId).Return(&SampleFileShares[0], nil)
 		mockClient.On("CreateFileShareAcl", context.NewAdminContext(), in).Return(&SampleFileSharesAcl[2], nil)
@@ -757,7 +721,7 @@ func TestCreateFileShareAclDBEntry(t *testing.T) {
 	})
 
 	t.Run("Invalid accesscapabilities", func(t *testing.T) {
-		in.ProfileId, in.Type, in.AccessTo, in.AccessCapability = "d2975ebe-d82c-430f-b28e-f373746a71ca", "ip", "201.100.101.9", []string{"read", "execute"}
+		in.Type, in.AccessTo, in.AccessCapability = "ip", "201.100.101.9", []string{"read", "execute"}
 		mockClient := new(dbtest.Client)
 		mockClient.On("GetFileShare", context.NewAdminContext(), in.FileShareId).Return(&SampleFileShares[0], nil)
 		mockClient.On("CreateFileShareAcl", context.NewAdminContext(), in).Return(&SampleFileSharesAcl[2], nil)
@@ -770,7 +734,7 @@ func TestCreateFileShareAclDBEntry(t *testing.T) {
 	})
 
 	t.Run("Invalid fileshare id given", func(t *testing.T) {
-		in.ProfileId, in.Type, in.AccessTo, in.AccessCapability = "d2975ebe-d82c-430f-b28e-f373746a71ca", "ip", "201.100.101.9", []string{"read"}
+		in.Type, in.AccessTo, in.AccessCapability = "ip", "201.100.101.9", []string{"read"}
 		mockClient := new(dbtest.Client)
 		mockClient.On("GetFileShare", context.NewAdminContext(), in.FileShareId).Return(&SampleFileShares[0], nil)
 		SampleFileShares[0].Status = model.FileShareError

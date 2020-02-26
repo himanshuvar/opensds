@@ -519,9 +519,11 @@ func (d *Driver) CreateSnapshot(opt *pb.CreateVolumeSnapshotOpts) (*model.Volume
 		KImageName: EncodeName(opt.GetVolumeId()),
 	}
 
+	//TODO: Fix this
 	// upload to cloud
-	profile := model.NewProfileFromJson(opt.GetProfile())
-	bucket := profile.SnapshotProperties.Topology.Bucket
+	//profile := model.NewProfileFromJson(opt.GetProfile())
+	//bucket := profile.SnapshotProperties.Topology.Bucket
+	bucket := ""
 	if len(bucket) != 0 {
 		updateMetadata, err := d.uploadSnapshotToCloud(opt, bucket, mgr)
 		if err != nil {

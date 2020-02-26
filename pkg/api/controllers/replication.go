@@ -23,8 +23,8 @@ import (
 	"github.com/opensds/opensds/pkg/api/policy"
 	"github.com/opensds/opensds/pkg/api/util"
 	c "github.com/opensds/opensds/pkg/context"
-	"github.com/opensds/opensds/pkg/controller/client"
 	"github.com/opensds/opensds/pkg/db"
+	"github.com/opensds/opensds/pkg/dock/client"
 	"github.com/opensds/opensds/pkg/model"
 	pb "github.com/opensds/opensds/pkg/model/proto"
 	. "github.com/opensds/opensds/pkg/utils/config"
@@ -32,14 +32,14 @@ import (
 
 func NewReplicationPortal() *ReplicationPortal {
 	return &ReplicationPortal{
-		CtrClient: client.NewClient(),
+		DockClient: client.NewClient(),
 	}
 }
 
 type ReplicationPortal struct {
 	BasePortal
 
-	CtrClient client.Client
+	DockClient client.Client
 }
 
 var whiteListSimple = []string{"Id", "Name", "ReplicationStatus"}
@@ -82,7 +82,7 @@ func (r *ReplicationPortal) CreateReplication() {
 	// NOTE:The real volume replication creation process.
 	// Volume replication creation request is sent to the Dock. Dock will update volume status to "available"
 	// after volume replication creation is completed.
-	if err = r.CtrClient.Connect(CONF.OsdsLet.ApiEndpoint); err != nil {
+	if err = r.DockClient.Connect(CONF.OsdsDock.ApiEndpoint); err != nil {
 		log.Error("when connecting controller client:", err)
 		return
 	}
@@ -94,10 +94,9 @@ func (r *ReplicationPortal) CreateReplication() {
 		PrimaryVolumeId:   result.PrimaryVolumeId,
 		SecondaryVolumeId: result.SecondaryVolumeId,
 		AvailabilityZone:  result.AvailabilityZone,
-		ProfileId:         result.ProfileId,
 		Context:           ctx.ToJson(),
 	}
-	response, err := r.CtrClient.CreateReplication(context.Background(), opt)
+	response, err := r.DockClient.CreateReplication(context.Background(), opt)
 	if err != nil {
 		log.Error("create volume replication failed in controller service:", err)
 		return
@@ -217,15 +216,6 @@ func (r *ReplicationPortal) UpdateReplication() {
 		return
 	}
 
-	if mr.ProfileId != "" {
-		if _, err := db.C.GetProfile(c.GetContext(r.Ctx), mr.ProfileId); err != nil {
-			errMsg := fmt.Sprintf("get profile failed: %s", err.Error())
-			r.ErrorHandle(model.ErrorNotFound, errMsg)
-			return
-		}
-		// TODO:compare with the original profile_id to get the differences
-	}
-
 	result, err := db.C.UpdateReplication(c.GetContext(r.Ctx), id, &mr)
 	if err != nil {
 		errMsg := fmt.Sprintf("update replication failed: %s", err.Error())
@@ -268,7 +258,7 @@ func (r *ReplicationPortal) DeleteReplication() {
 	// NOTE:The real volume replication deletion process.
 	// Volume replication deletion request is sent to the Dock. Dock will remove
 	// replicaiton record after volume replication creation is completed.
-	if err = r.CtrClient.Connect(CONF.OsdsLet.ApiEndpoint); err != nil {
+	if err = r.DockClient.Connect(CONF.OsdsDock.ApiEndpoint); err != nil {
 		log.Error("when connecting controller client:", err)
 		return
 	}
@@ -278,11 +268,10 @@ func (r *ReplicationPortal) DeleteReplication() {
 		PrimaryVolumeId:   rep.PrimaryVolumeId,
 		SecondaryVolumeId: rep.SecondaryVolumeId,
 		AvailabilityZone:  rep.AvailabilityZone,
-		ProfileId:         rep.ProfileId,
 		Metadata:          rep.Metadata,
 		Context:           ctx.ToJson(),
 	}
-	response, err := r.CtrClient.DeleteReplication(context.Background(), opt)
+	response, err := r.DockClient.DeleteReplication(context.Background(), opt)
 	if err != nil {
 		log.Error("delete volume replication failed in controller service:", err)
 		return
@@ -320,7 +309,7 @@ func (r *ReplicationPortal) EnableReplication() {
 	// Volume replication enable request is sent to the Dock. Dock will set
 	// volume replication status to 'available' after volume replication enable
 	// operation is completed.
-	if err = r.CtrClient.Connect(CONF.OsdsLet.ApiEndpoint); err != nil {
+	if err = r.DockClient.Connect(CONF.OsdsDock.ApiEndpoint); err != nil {
 		log.Error("when connecting controller client:", err)
 		return
 	}
@@ -330,11 +319,10 @@ func (r *ReplicationPortal) EnableReplication() {
 		PrimaryVolumeId:   rep.PrimaryVolumeId,
 		SecondaryVolumeId: rep.SecondaryVolumeId,
 		AvailabilityZone:  rep.AvailabilityZone,
-		ProfileId:         rep.ProfileId,
 		Metadata:          rep.Metadata,
 		Context:           ctx.ToJson(),
 	}
-	response, err := r.CtrClient.EnableReplication(context.Background(), opt)
+	response, err := r.DockClient.EnableReplication(context.Background(), opt)
 	if err != nil {
 		log.Error("enable volume replication failed in controller service:", err)
 		return
@@ -372,7 +360,7 @@ func (r *ReplicationPortal) DisableReplication() {
 	// Volume replication diable request is sent to the Dock. Dock will set
 	// volume replication status to 'available' after volume replication disable
 	// operation is completed.
-	if err = r.CtrClient.Connect(CONF.OsdsLet.ApiEndpoint); err != nil {
+	if err = r.DockClient.Connect(CONF.OsdsDock.ApiEndpoint); err != nil {
 		log.Error("when connecting controller client:", err)
 		return
 	}
@@ -382,11 +370,10 @@ func (r *ReplicationPortal) DisableReplication() {
 		PrimaryVolumeId:   rep.PrimaryVolumeId,
 		SecondaryVolumeId: rep.SecondaryVolumeId,
 		AvailabilityZone:  rep.AvailabilityZone,
-		ProfileId:         rep.ProfileId,
 		Metadata:          rep.Metadata,
 		Context:           ctx.ToJson(),
 	}
-	response, err := r.CtrClient.DisableReplication(context.Background(), opt)
+	response, err := r.DockClient.DisableReplication(context.Background(), opt)
 	if err != nil {
 		log.Error("disable volume replication failed in controller service:", err)
 		return
@@ -431,7 +418,7 @@ func (r *ReplicationPortal) FailoverReplication() {
 	// Volume replication failover request is sent to the Dock. Dock will set
 	// volume replication status to 'available' after volume replication failover
 	// operation is completed.
-	if err = r.CtrClient.Connect(CONF.OsdsLet.ApiEndpoint); err != nil {
+	if err = r.DockClient.Connect(CONF.OsdsDock.ApiEndpoint); err != nil {
 		log.Error("when connecting controller client:", err)
 		return
 	}
@@ -441,13 +428,12 @@ func (r *ReplicationPortal) FailoverReplication() {
 		PrimaryVolumeId:     rep.PrimaryVolumeId,
 		SecondaryVolumeId:   rep.SecondaryVolumeId,
 		AvailabilityZone:    rep.AvailabilityZone,
-		ProfileId:           rep.ProfileId,
 		Metadata:            rep.Metadata,
 		AllowAttachedVolume: failover.AllowAttachedVolume,
 		SecondaryBackendId:  failover.SecondaryBackendId,
 		Context:             ctx.ToJson(),
 	}
-	response, err := r.CtrClient.FailoverReplication(context.Background(), opt)
+	response, err := r.DockClient.FailoverReplication(context.Background(), opt)
 	if err != nil {
 		log.Error("failover volume replication failed in controller service:", err)
 		return

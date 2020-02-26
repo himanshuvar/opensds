@@ -25,7 +25,6 @@ import (
 	log "github.com/golang/glog"
 	"github.com/opensds/opensds/contrib/drivers/utils"
 	. "github.com/opensds/opensds/contrib/drivers/utils/config"
-	"github.com/opensds/opensds/pkg/model"
 	pb "github.com/opensds/opensds/pkg/model/proto"
 )
 
@@ -279,8 +278,9 @@ func (c *NimbleClient) CreateVolume(poolId string, opt *pb.CreateVolumeOpts) (*V
 		return nil, err
 	}
 
+	reqOptions := CreateVolumeReqData{}
 	// Parse options from Profile----------------------------------------------
-	profileOpt := &model.ProfileSpec{}
+	/*profileOpt := &model.ProfileSpec{}
 	reqOptions := CreateVolumeReqData{}
 	if err := json.Unmarshal([]byte(opt.GetProfile()), profileOpt); err != nil {
 		return nil, err
@@ -293,7 +293,7 @@ func (c *NimbleClient) CreateVolume(poolId string, opt *pb.CreateVolumeOpts) (*V
 
 	if err := json.Unmarshal(options, &reqOptions); err != nil {
 		return nil, err
-	}
+	}*/
 	// -------------------------------------------------------------------------
 
 	reqOptions.Name = opt.GetId()
@@ -428,7 +428,7 @@ func (c *NimbleClient) ExtendVolume(poolId string, opt *pb.ExtendVolumeOpts) (*V
 	// Parse options from Profile----------------------------------------------
 	reqOptions := ExtendVolumeReqData{}
 
-	profileOpt := &model.ProfileSpec{}
+	/*profileOpt := &model.ProfileSpec{}
 	if err := json.Unmarshal([]byte(opt.GetProfile()), profileOpt); err != nil {
 		return nil, err
 	}
@@ -440,7 +440,7 @@ func (c *NimbleClient) ExtendVolume(poolId string, opt *pb.ExtendVolumeOpts) (*V
 
 	if err := json.Unmarshal(options, &reqOptions); err != nil {
 		return nil, err
-	}
+	}*/
 
 	// -------------------------------------------------------------------------
 	reqOptions.Size = Gib2Mebi(opt.GetSize())
@@ -459,7 +459,7 @@ func (c *NimbleClient) CreateSnapshot(poolId string, opt *pb.CreateVolumeSnapsho
 	// Parse options from Profile----------------------------------------------
 	reqOptions := CreateSnapshotReqData{}
 
-	profileOpt := &model.ProfileSpec{}
+	/*profileOpt := &model.ProfileSpec{}
 	if err := json.Unmarshal([]byte(opt.GetProfile()), profileOpt); err != nil {
 		return nil, err
 	}
@@ -471,7 +471,7 @@ func (c *NimbleClient) CreateSnapshot(poolId string, opt *pb.CreateVolumeSnapsho
 
 	if err := json.Unmarshal(options, &reqOptions); err != nil {
 		return nil, err
-	}
+	}*/
 	// -------------------------------------------------------------------------
 
 	reqOptions.Name = opt.GetId()

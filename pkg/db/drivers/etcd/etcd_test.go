@@ -129,12 +129,6 @@ func TestCreatePool(t *testing.T) {
 	}
 }
 
-func TestCreateProfile(t *testing.T) {
-	if _, err := fc.CreateProfile(c.NewAdminContext(), &model.ProfileSpec{BaseModel: &model.BaseModel{}}); err != nil {
-		t.Error("Create profile failed:", err)
-	}
-}
-
 func TestCreateVolume(t *testing.T) {
 	if _, err := fc.CreateVolume(c.NewAdminContext(), &model.VolumeSpec{BaseModel: &model.BaseModel{}}); err != nil {
 		t.Error("Create volume failed:", err)
@@ -180,18 +174,6 @@ func TestGetPool(t *testing.T) {
 	var expected = &SamplePools[0]
 	if !reflect.DeepEqual(pol, expected) {
 		t.Errorf("Expected %+v, got %+v\n", expected, pol)
-	}
-}
-
-func TestGetProfile(t *testing.T) {
-	prf, err := fc.GetProfile(c.NewAdminContext(), "")
-	if err != nil {
-		t.Error("Get profile failed:", err)
-	}
-
-	var expected = &SampleProfiles[0]
-	if !reflect.DeepEqual(prf, expected) {
-		t.Errorf("Expected %+v, got %+v\n", expected, prf)
 	}
 }
 
@@ -293,27 +275,6 @@ func TestListPools(t *testing.T) {
 	expected = append(expected, &SamplePools[0])
 	if !reflect.DeepEqual(pols, expected) {
 		t.Errorf("Expected %+v, got %+v\n", expected, pols)
-	}
-}
-
-func TestListProfiles(t *testing.T) {
-	m := map[string][]string{
-		"offset":  {"0"},
-		"limit":   {"2"},
-		"sortDir": {"asc"},
-		"sortKey": {"Id"},
-	}
-	prfs, err := fc.ListProfilesWithFilter(c.NewAdminContext(), m)
-	if err != nil {
-		t.Error("List profiles failed:", err)
-	}
-
-	var expected []*model.ProfileSpec
-	for i := range SampleProfiles {
-		expected = append(expected, &SampleProfiles[i])
-	}
-	if !reflect.DeepEqual(prfs, expected) {
-		t.Errorf("Expected %+v, got %+v\n", expected, prfs)
 	}
 }
 
@@ -496,7 +457,6 @@ func TestUpdateReplication(t *testing.T) {
 	var replication = model.ReplicationSpec{
 		Name:        "Test Name",
 		Description: "Test Description",
-		ProfileId:   "3769855c-a102-11e7-b772-17b880d2f123",
 	}
 
 	result, err := fc.UpdateReplication(c.NewAdminContext(), "c299a978-4f3e-11e8-8a5c-977218a83359", &replication)
@@ -515,10 +475,6 @@ func TestUpdateReplication(t *testing.T) {
 	if result.Description != "Test Description" {
 		t.Errorf("Expected %+v, got %+v\n", "Test Description", result.Description)
 	}
-
-	if result.ProfileId != "3769855c-a102-11e7-b772-17b880d2f123" {
-		t.Errorf("Expected %+v, got %+v\n", "Test Description", result.Description)
-	}
 }
 
 func TestDeleteDock(t *testing.T) {
@@ -530,12 +486,6 @@ func TestDeleteDock(t *testing.T) {
 func TestDeletePool(t *testing.T) {
 	if err := fc.DeletePool(c.NewAdminContext(), ""); err != nil {
 		t.Error("Delete pool failed:", err)
-	}
-}
-
-func TestDeleteProfile(t *testing.T) {
-	if err := fc.DeleteProfile(c.NewAdminContext(), ""); err != nil {
-		t.Error("Delete profile failed:", err)
 	}
 }
 
@@ -1051,92 +1001,6 @@ func TestListPoolsWithFilter(t *testing.T) {
 				expected = append(expected, *value)
 			}
 			var got []model.StoragePoolSpec
-			for _, value := range res {
-				got = append(got, *value)
-			}
-			t.Errorf("Expected %+v\n", expected)
-			t.Errorf("Got %+v\n", got)
-		}
-	}
-}
-
-func TestListProfilesWithFilter(t *testing.T) {
-	type test struct {
-		input    []*model.ProfileSpec
-		param    map[string][]string
-		expected []*model.ProfileSpec
-	}
-	tests := []test{
-		// select by storage type
-		{
-			input: []*model.ProfileSpec{
-				&SampleProfiles[0],
-				&SampleProfiles[1],
-			},
-			param: map[string][]string{
-				"description": {"silver policy"},
-			},
-			expected: []*model.ProfileSpec{
-				&SampleProfiles[1],
-			},
-		},
-		// sort by name asc
-		{
-			input: []*model.ProfileSpec{
-				&SampleProfiles[0],
-				&SampleProfiles[1],
-			},
-			param: map[string][]string{
-				"sortKey": {"name"},
-				"sortDir": {"asc"},
-			},
-			expected: []*model.ProfileSpec{
-				&SampleProfiles[0],
-				&SampleProfiles[1],
-			},
-		},
-		// sort by name desc
-		{
-			input: []*model.ProfileSpec{
-				&SampleProfiles[0],
-				&SampleProfiles[1],
-			},
-			param: map[string][]string{
-				"sortKey": {"name"},
-				"sortDir": {"desc"},
-			},
-			expected: []*model.ProfileSpec{
-				&SampleProfiles[1],
-				&SampleProfiles[0],
-			},
-		},
-		// limit is 1
-		{
-			input: []*model.ProfileSpec{
-				&SampleProfiles[0],
-				&SampleProfiles[1],
-			},
-			param: map[string][]string{
-				"limit":  {"1"},
-				"offset": {"1"},
-			},
-			expected: []*model.ProfileSpec{
-				&SampleProfiles[1],
-			},
-		},
-	}
-	for _, testcase := range tests {
-		ret := fc.FilterAndSort(testcase.input, testcase.param, sortableKeysMap[typeProfiles])
-		var res = []*model.ProfileSpec{}
-		for _, data := range ret.([]interface{}) {
-			res = append(res, data.(*model.ProfileSpec))
-		}
-		if !reflect.DeepEqual(res, testcase.expected) {
-			var expected []model.ProfileSpec
-			for _, value := range testcase.expected {
-				expected = append(expected, *value)
-			}
-			var got []model.ProfileSpec
 			for _, value := range res {
 				got = append(got, *value)
 			}

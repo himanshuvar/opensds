@@ -21,12 +21,13 @@ package main
 
 import (
 	"flag"
-
-	"github.com/opensds/opensds/pkg/db"
+	"github.com/opensds/opensds/pkg/api"
 	"github.com/opensds/opensds/pkg/dock"
 	"github.com/opensds/opensds/pkg/model"
-	. "github.com/opensds/opensds/pkg/utils/config"
 	"github.com/opensds/opensds/pkg/utils/constants"
+
+	"github.com/opensds/opensds/pkg/db"
+	. "github.com/opensds/opensds/pkg/utils/config"
 	"github.com/opensds/opensds/pkg/utils/daemon"
 	"github.com/opensds/opensds/pkg/utils/logs"
 )
@@ -52,6 +53,9 @@ func main() {
 
 	// Set up database session.
 	db.Init(&CONF.Database)
+
+	// Start OpenSDS northbound REST service.
+	api.Run(CONF.OsdsDock)
 
 	// FixMe: osdsdock attacher service needs to specify the endpoint via configuration file,
 	//  so add this temporarily.

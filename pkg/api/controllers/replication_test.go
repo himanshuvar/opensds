@@ -189,7 +189,6 @@ func TestUpdateReplication(t *testing.T) {
 		json.NewDecoder(bytes.NewBuffer(jsonStr)).Decode(&replication)
 		mockClient := new(dbtest.Client)
 		mockClient.On("UpdateReplication", c.NewAdminContext(), replication.Id, &replication).Return(&expected, nil)
-		mockClient.On("GetProfile", c.NewAdminContext(), SampleReplications[0].ProfileId).Return(&SampleProfiles[0], nil)
 		db.C = mockClient
 
 		r, _ := http.NewRequest("PUT",

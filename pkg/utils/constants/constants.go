@@ -32,7 +32,7 @@ const (
 	ContentType = "application/json"
 
 	// OpenSDS current api version
-	APIVersion = "v1beta"
+	APIVersion = "v1"
 
 	// BeegoServerTimeOut ...
 	BeegoServerTimeOut = 60
@@ -44,9 +44,6 @@ const (
 	// configuration file.
 	OpensdsConfigPath = "/etc/opensds/opensds.conf"
 
-	// OpensdsCtrBindEndpoint indicates the bind endpoint which the opensds
-	// controller grpc server would listen to.
-	OpensdsCtrBindEndpoint = "0.0.0.0:50049"
 	// OpensdsDockBindEndpoint indicates the bind endpoint which the opensds
 	// dock grpc server would listen to.
 	OpensdsDockBindEndpoint = "0.0.0.0:50050"

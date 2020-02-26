@@ -28,8 +28,8 @@ import (
 	"github.com/opensds/opensds/contrib/drivers/utils/config"
 	"github.com/opensds/opensds/pkg/api/policy"
 	c "github.com/opensds/opensds/pkg/context"
-	"github.com/opensds/opensds/pkg/controller/client"
 	"github.com/opensds/opensds/pkg/db"
+	"github.com/opensds/opensds/pkg/dock/client"
 	"github.com/opensds/opensds/pkg/model"
 	pb "github.com/opensds/opensds/pkg/model/proto"
 	"github.com/opensds/opensds/pkg/utils"
@@ -38,14 +38,14 @@ import (
 
 func NewVolumeAttachmentPortal() *VolumeAttachmentPortal {
 	return &VolumeAttachmentPortal{
-		CtrClient: client.NewClient(),
+		DockClient: client.NewClient(),
 	}
 }
 
 type VolumeAttachmentPortal struct {
 	BasePortal
 
-	CtrClient client.Client
+	DockClient client.Client
 }
 
 func (v *VolumeAttachmentPortal) CreateVolumeAttachment() {
@@ -140,7 +140,7 @@ func (v *VolumeAttachmentPortal) CreateVolumeAttachment() {
 	// NOTE:The real volume attachment creation process.
 	// Volume attachment creation request is sent to the Dock. Dock will update volume attachment status to "available"
 	// after volume attachment creation is completed.
-	if err := v.CtrClient.Connect(apiconfig.CONF.OsdsLet.ApiEndpoint); err != nil {
+	if err := v.DockClient.Connect(apiconfig.CONF.OsdsDock.ApiEndpoint); err != nil {
 		log.Error("when connecting controller client:", err)
 		return
 	}
@@ -177,7 +177,7 @@ func (v *VolumeAttachmentPortal) CreateVolumeAttachment() {
 		Context:  ctx.ToJson(),
 	}
 
-	response, err := v.CtrClient.CreateVolumeAttachment(context.Background(), opt)
+	response, err := v.DockClient.CreateVolumeAttachment(context.Background(), opt)
 	if err != nil {
 		log.Error("create volume attachment failed in controller service:", err)
 		return
@@ -323,7 +323,7 @@ func (v *VolumeAttachmentPortal) DeleteVolumeAttachment() {
 	// NOTE:The real volume attachment deletion process.
 	// Volume attachment deletion request is sent to the Dock. Dock will delete volume attachment from database
 	// or update its status to "errorDeleting" if volume connection termination failed.
-	if err := v.CtrClient.Connect(apiconfig.CONF.OsdsLet.ApiEndpoint); err != nil {
+	if err := v.DockClient.Connect(apiconfig.CONF.OsdsDock.ApiEndpoint); err != nil {
 		log.Error("when connecting controller client:", err)
 		return
 	}
@@ -350,7 +350,7 @@ func (v *VolumeAttachmentPortal) DeleteVolumeAttachment() {
 		Metadata: vol.Metadata,
 		Context:  ctx.ToJson(),
 	}
-	response, err := v.CtrClient.DeleteVolumeAttachment(context.Background(), opt)
+	response, err := v.DockClient.DeleteVolumeAttachment(context.Background(), opt)
 	if err != nil {
 		log.Error("delete volume attachment failed in controller service:", err)
 		return

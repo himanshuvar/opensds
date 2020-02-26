@@ -15,7 +15,6 @@
 package oceanstor
 
 import (
-	"encoding/json"
 	"errors"
 	"fmt"
 	"os"
@@ -24,7 +23,7 @@ import (
 
 	log "github.com/golang/glog"
 	. "github.com/opensds/opensds/contrib/drivers/utils/config"
-	model "github.com/opensds/opensds/pkg/model"
+	"github.com/opensds/opensds/pkg/model"
 	pb "github.com/opensds/opensds/pkg/model/proto"
 	"github.com/opensds/opensds/pkg/utils"
 	"github.com/opensds/opensds/pkg/utils/config"
@@ -77,11 +76,11 @@ func (d *Driver) Unset() error {
 func (d *Driver) CreateFileShare(opt *pb.CreateFileShareOpts) (*model.FileShareSpec, error) {
 	fsName := opt.GetName()
 	size := opt.GetSize()
-	prf := opt.GetProfile()
+	//prf := opt.GetProfile()
 	poolID := opt.GetPoolName()
 	shareProto := ""
 
-	err := d.parameterCheck(poolID, prf, size, &fsName, &shareProto)
+	err := d.parameterCheck(poolID, size, &fsName, &shareProto)
 	if err != nil {
 		log.Error(err.Error())
 		return nil, err
@@ -126,7 +125,7 @@ func (d *Driver) CreateFileShare(opt *pb.CreateFileShareOpts) (*model.FileShareS
 	return share, nil
 }
 
-func (d *Driver) parameterCheck(poolID, prf string, size int64, fsName, shareProto *string) error {
+func (d *Driver) parameterCheck(poolID string, size int64, fsName, shareProto *string) error {
 	// Parameter check
 	if poolID == "" {
 		msg := "pool id cannot be empty"
@@ -139,7 +138,7 @@ func (d *Driver) parameterCheck(poolID, prf string, size int64, fsName, sharePro
 		*fsName = defaultFileSystem
 	}
 
-	proto, err := d.GetProtoFromProfile(prf)
+	/*proto, err := d.GetProtoFromProfile(prf)
 	if err != nil {
 		return err
 	}
@@ -148,7 +147,7 @@ func (d *Driver) parameterCheck(poolID, prf string, size int64, fsName, sharePro
 		return fmt.Errorf("%s protocol is not supported, support is %s and %s", proto, NFSProto, CIFSProto)
 	}
 
-	*shareProto = proto
+	*shareProto = proto*/
 
 	if size == 0 {
 		return errors.New("size must be greater than 0")
@@ -320,7 +319,7 @@ func (d *Driver) getFSInfo(fsName string) (*FileSystemData, error) {
 	return &fsList[0], nil
 }
 
-func (d *Driver) GetProtoFromProfile(prf string) (string, error) {
+/*func (d *Driver) GetProtoFromProfile(prf string) (string, error) {
 	if prf == "" {
 		msg := "profile cannot be empty"
 		return "", errors.New(msg)
@@ -341,14 +340,14 @@ func (d *Driver) GetProtoFromProfile(prf string) (string, error) {
 	}
 
 	return shareProto, nil
-}
+}*/
 
 func (d *Driver) DeleteFileShare(opt *pb.DeleteFileShareOpts) error {
-	shareProto, err := d.GetProtoFromProfile(opt.GetProfile())
+	/*shareProto, err := d.GetProtoFromProfile(opt.GetProfile())
 	if err != nil {
 		log.Error(err.Error())
 		return err
-	}
+	}*/
 
 	meta := opt.GetMetadata()
 	if meta == nil || (meta != nil && meta[FileShareName] == "" && meta[FileShareID] == "") {
@@ -360,7 +359,9 @@ func (d *Driver) DeleteFileShare(opt *pb.DeleteFileShareOpts) error {
 	fsName := meta[FileShareName]
 	shareID := meta[FileShareID]
 
-	shareDriver := NewProtocol(shareProto, d.Client)
+	//TODO: Fix this
+	//shareDriver := NewProtocol(shareProto, d.Client)
+	shareDriver := NewProtocol("nfs", d.Client)
 
 	sharePath := getSharePath(fsName)
 	if err := shareDriver.deleteShare(shareID); err != nil {
@@ -514,10 +515,12 @@ func (d *Driver) CreateFileShareAclParamCheck(opt *pb.CreateFileShareAclOpts) (s
 		return "", "", "", "", errors.New("fileshare name cannot be empty")
 	}
 
-	shareProto, err := d.GetProtoFromProfile(opt.Profile)
+	//TODO: Fix this
+	/*shareProto, err := d.GetProtoFromProfile(opt.Profile)
 	if err != nil {
 		return "", "", "", "", err
-	}
+	}*/
+	shareProto := "nfs"
 
 	if !checkProtocol(shareProto) {
 		return "", "", "", "", fmt.Errorf("%s protocol is not supported, support is NFS and CIFS", shareProto)
@@ -671,10 +674,12 @@ func (d *Driver) DeleteFileShareAclParamCheck(opt *pb.DeleteFileShareAclOpts) (s
 
 	fsName := meta[FileShareName]
 
-	shareProto, err := d.GetProtoFromProfile(opt.Profile)
+	//TODO: Fix this
+	/*shareProto, err := d.GetProtoFromProfile(opt.Profile)
 	if err != nil {
 		return "", "", "", err
-	}
+	}*/
+	shareProto := "nfs"
 
 	if !checkProtocol(shareProto) {
 		return "", "", "", fmt.Errorf("%s protocol is not supported, support is NFS and CIFS", shareProto)

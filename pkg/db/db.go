@@ -64,8 +64,6 @@ type Client interface {
 
 	ListFileShares(ctx *c.Context) ([]*model.FileShareSpec, error)
 
-	ListFileSharesByProfileId(ctx *c.Context, prfId string) ([]string, error)
-
 	ListFileSharesWithFilter(ctx *c.Context, m map[string][]string) ([]*model.FileShareSpec, error)
 
 	ListFileSharesAclWithFilter(ctx *c.Context, m map[string][]string) ([]*model.FileShareAclSpec, error)
@@ -124,35 +122,11 @@ type Client interface {
 
 	DeletePool(ctx *c.Context, polID string) error
 
-	CreateProfile(ctx *c.Context, prf *model.ProfileSpec) (*model.ProfileSpec, error)
-
-	GetProfile(ctx *c.Context, prfID string) (*model.ProfileSpec, error)
-
-	GetDefaultProfile(ctx *c.Context) (*model.ProfileSpec, error)
-
-	GetDefaultProfileFileShare(ctx *c.Context) (*model.ProfileSpec, error)
-
-	ListProfiles(ctx *c.Context) ([]*model.ProfileSpec, error)
-
-	ListProfilesWithFilter(ctx *c.Context, m map[string][]string) ([]*model.ProfileSpec, error)
-
-	UpdateProfile(ctx *c.Context, prfID string, input *model.ProfileSpec) (*model.ProfileSpec, error)
-
-	DeleteProfile(ctx *c.Context, prfID string) error
-
-	AddCustomProperty(ctx *c.Context, prfID string, custom model.CustomPropertiesSpec) (*model.CustomPropertiesSpec, error)
-
-	ListCustomProperties(ctx *c.Context, prfID string) (*model.CustomPropertiesSpec, error)
-
-	RemoveCustomProperty(ctx *c.Context, prfID, customKey string) error
-
 	CreateVolume(ctx *c.Context, vol *model.VolumeSpec) (*model.VolumeSpec, error)
 
 	GetVolume(ctx *c.Context, volID string) (*model.VolumeSpec, error)
 
 	ListVolumes(ctx *c.Context) ([]*model.VolumeSpec, error)
-
-	ListVolumesByProfileId(ctx *c.Context, prfID string) ([]string, error)
 
 	ListVolumesWithFilter(ctx *c.Context, m map[string][]string) ([]*model.VolumeSpec, error)
 

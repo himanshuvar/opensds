@@ -251,8 +251,6 @@ func (fileshare FileShareSlice) Less(i, j int) bool {
 		return fileshare[i].Status < fileshare[j].Status
 	case "AVAILABILITYZONE":
 		return fileshare[i].AvailabilityZone < fileshare[j].AvailabilityZone
-	case "PROFILEID":
-		return fileshare[i].ProfileId < fileshare[j].ProfileId
 	case "TENANTID":
 		return fileshare[i].TenantId < fileshare[j].TenantId
 	case "SIZE":
@@ -289,8 +287,6 @@ func (c *Client) FindFileShareValue(k string, p *model.FileShareSpec) string {
 		return p.Status
 	case "PoolId":
 		return p.PoolId
-	case "ProfileId":
-		return p.ProfileId
 	}
 	return ""
 }
@@ -509,21 +505,6 @@ func (c *Client) ListFileShares(ctx *c.Context) ([]*model.FileShareSpec, error) 
 		fileshares = append(fileshares, share)
 	}
 	return fileshares, nil
-}
-
-// ListFileSharesByProfileId
-func (c *Client) ListFileSharesByProfileId(ctx *c.Context, prfId string) ([]string, error) {
-	fileshares, err := c.ListFileShares(ctx)
-	if err != nil {
-		return nil, err
-	}
-	var res_fileshares []string
-	for _, shares := range fileshares {
-		if shares.ProfileId == prfId {
-			res_fileshares = append(res_fileshares, shares.Name)
-		}
-	}
-	return res_fileshares, nil
 }
 
 // GetFileShareAcl
@@ -1187,249 +1168,13 @@ func (c *Client) DeletePool(ctx *c.Context, polID string) error {
 	return nil
 }
 
-// CreateProfile
-func (c *Client) CreateProfile(ctx *c.Context, prf *model.ProfileSpec) (*model.ProfileSpec, error) {
-	if prf.Id == "" {
-		prf.Id = uuid.NewV4().String()
-	}
-	if prf.CreatedAt == "" {
-		prf.CreatedAt = time.Now().Format(constants.TimeFormat)
-	}
-
-	// profile name must be unique.
-	if _, err := c.getProfileByName(ctx, prf.Name); err == nil {
-		return nil, fmt.Errorf("the profile name '%s' already exists", prf.Name)
-	}
-
-	prfBody, err := json.Marshal(prf)
-	if err != nil {
-		return nil, err
-	}
-
-	dbReq := &Request{
-		Url:     urls.GenerateProfileURL(urls.Etcd, "", prf.Id),
-		Content: string(prfBody),
-	}
-	dbRes := c.Create(dbReq)
-	if dbRes.Status != "Success" {
-		log.Error("When create profile in db:", dbRes.Error)
-		return nil, errors.New(dbRes.Error)
-	}
-
-	return prf, nil
-}
-
-// GetProfile
-func (c *Client) GetProfile(ctx *c.Context, prfID string) (*model.ProfileSpec, error) {
-	dbReq := &Request{
-		Url: urls.GenerateProfileURL(urls.Etcd, "", prfID),
-	}
-	dbRes := c.Get(dbReq)
-	if dbRes.Status != "Success" {
-		log.Error("When get profile in db:", dbRes.Error)
-		return nil, errors.New(dbRes.Error)
-	}
-
-	var prf = &model.ProfileSpec{}
-	if err := json.Unmarshal([]byte(dbRes.Message[0]), prf); err != nil {
-		log.Error("When parsing profile in db:", dbRes.Error)
-		return nil, errors.New(dbRes.Error)
-	}
-	return prf, nil
-}
-
-func (c *Client) getProfileByName(ctx *c.Context, name string) (*model.ProfileSpec, error) {
-	profiles, err := c.ListProfiles(ctx)
-	if err != nil {
-		log.Error("List profile failed: ", err)
-		return nil, err
-	}
-
-	for _, profile := range profiles {
-		if profile.Name == name {
-			return profile, nil
-		}
-	}
-	var msg = fmt.Sprintf("can't find profile(name: %s)", name)
-	return nil, model.NewNotFoundError(msg)
-}
-
-func (c *Client) getProfileByNameAndType(ctx *c.Context, name, storageType string) (*model.ProfileSpec, error) {
-	profiles, err := c.ListProfiles(ctx)
-	if err != nil {
-		log.Error("List profile failed: ", err)
-		return nil, err
-	}
-
-	for _, profile := range profiles {
-		if profile.Name == name && profile.StorageType == storageType {
-			return profile, nil
-		}
-	}
-	var msg = fmt.Sprintf("can't find profile(name: %s, storageType:%s)", name, storageType)
-	return nil, model.NewNotFoundError(msg)
-}
-
-// GetDefaultProfile
-func (c *Client) GetDefaultProfile(ctx *c.Context) (*model.ProfileSpec, error) {
-	return c.getProfileByNameAndType(ctx, defaultBlockProfileName, typeBlock)
-}
-
-// GetDefaultProfileFileShare
-func (c *Client) GetDefaultProfileFileShare(ctx *c.Context) (*model.ProfileSpec, error) {
-	return c.getProfileByNameAndType(ctx, defaultFileProfileName, typeFile)
-}
-
-// ListProfiles
-func (c *Client) ListProfiles(ctx *c.Context) ([]*model.ProfileSpec, error) {
-	dbReq := &Request{
-		Url: urls.GenerateProfileURL(urls.Etcd, ""),
-	}
-
-	dbRes := c.List(dbReq)
-	if dbRes.Status != "Success" {
-		log.Error("When list profiles in db:", dbRes.Error)
-		return nil, errors.New(dbRes.Error)
-	}
-
-	var prfs = []*model.ProfileSpec{}
-	if len(dbRes.Message) == 0 {
-		return prfs, nil
-	}
-	for _, msg := range dbRes.Message {
-		var prf = &model.ProfileSpec{}
-		if err := json.Unmarshal([]byte(msg), prf); err != nil {
-			log.Error("When parsing profile in db:", dbRes.Error)
-			return nil, errors.New(dbRes.Error)
-		}
-		prfs = append(prfs, prf)
-	}
-	return prfs, nil
-}
-
-func (c *Client) ListProfilesWithFilter(ctx *c.Context, m map[string][]string) ([]*model.ProfileSpec, error) {
-	profiles, err := c.ListProfiles(ctx)
-	if err != nil {
-		log.Error("List profiles failed: ", err)
-		return nil, err
-	}
-
-	tmpProfiles := c.FilterAndSort(profiles, m, sortableKeysMap[typeProfiles])
-	var res = []*model.ProfileSpec{}
-	for _, data := range tmpProfiles.([]interface{}) {
-		res = append(res, data.(*model.ProfileSpec))
-	}
-	return res, nil
-}
-
-// UpdateProfile
-func (c *Client) UpdateProfile(ctx *c.Context, prfID string, input *model.ProfileSpec) (*model.ProfileSpec, error) {
-	prf, err := c.GetProfile(ctx, prfID)
-	if err != nil {
-		return nil, err
-	}
-	if name := input.Name; name != "" {
-		prf.Name = name
-	}
-	if desp := input.Description; desp != "" {
-		prf.Description = desp
-	}
-	prf.UpdatedAt = time.Now().Format(constants.TimeFormat)
-
-	if props := input.CustomProperties; len(props) != 0 {
-		if prf.CustomProperties == nil {
-			prf.CustomProperties = make(map[string]interface{})
-		}
-		for k, v := range props {
-			prf.CustomProperties[k] = v
-		}
-	}
-
-	prf.UpdatedAt = time.Now().Format(constants.TimeFormat)
-
-	prfBody, err := json.Marshal(prf)
-	if err != nil {
-		return nil, err
-	}
-
-	dbReq := &Request{
-		Url:        urls.GenerateProfileURL(urls.Etcd, "", prfID),
-		NewContent: string(prfBody),
-	}
-	dbRes := c.Update(dbReq)
-	if dbRes.Status != "Success" {
-		log.Error("When update profile in db:", dbRes.Error)
-		return nil, errors.New(dbRes.Error)
-	}
-	return prf, nil
-}
-
-// DeleteProfile
-func (c *Client) DeleteProfile(ctx *c.Context, prfID string) error {
-	dbReq := &Request{
-		Url: urls.GenerateProfileURL(urls.Etcd, "", prfID),
-	}
-	dbRes := c.Delete(dbReq)
-	if dbRes.Status != "Success" {
-		log.Error("When delete profile in db:", dbRes.Error)
-		return errors.New(dbRes.Error)
-	}
-	return nil
-}
-
-// AddCustomProperty
-func (c *Client) AddCustomProperty(ctx *c.Context, prfID string, ext model.CustomPropertiesSpec) (*model.CustomPropertiesSpec, error) {
-	prf, err := c.GetProfile(ctx, prfID)
-	if err != nil {
-		return nil, err
-	}
-
-	if prf.CustomProperties == nil {
-		prf.CustomProperties = make(map[string]interface{})
-	}
-
-	for k, v := range ext {
-		prf.CustomProperties[k] = v
-	}
-
-	prf.UpdatedAt = time.Now().Format(constants.TimeFormat)
-
-	if _, err = c.CreateProfile(ctx, prf); err != nil {
-		return nil, err
-	}
-	return &prf.CustomProperties, nil
-}
-
-// ListCustomProperties
-func (c *Client) ListCustomProperties(ctx *c.Context, prfID string) (*model.CustomPropertiesSpec, error) {
-	prf, err := c.GetProfile(ctx, prfID)
-	if err != nil {
-		return nil, err
-	}
-	return &prf.CustomProperties, nil
-}
-
-// RemoveCustomProperty
-func (c *Client) RemoveCustomProperty(ctx *c.Context, prfID, customKey string) error {
-	prf, err := c.GetProfile(ctx, prfID)
-	if err != nil {
-		return err
-	}
-
-	delete(prf.CustomProperties, customKey)
-	if _, err = c.CreateProfile(ctx, prf); err != nil {
-		return err
-	}
-	return nil
-}
-
 // CreateVolume
 func (c *Client) CreateVolume(ctx *c.Context, vol *model.VolumeSpec) (*model.VolumeSpec, error) {
-	profiles, err := c.ListProfiles(ctx)
+	pools, err := c.ListPools(ctx)
 	if err != nil {
 		return nil, err
-	} else if len(profiles) == 0 {
-		return nil, errors.New("No profile in db.")
+	} else if len(pools) == 0 {
+		return nil, errors.New("No pool in db.")
 	}
 
 	vol.TenantId = ctx.TenantId
@@ -1520,14 +1265,14 @@ func (c *Client) ListVolumes(ctx *c.Context) ([]*model.VolumeSpec, error) {
 }
 
 // ListVolumesByProfileId
-func (c *Client) ListVolumesByProfileId(ctx *c.Context, prfID string) ([]string, error) {
+func (c *Client) ListVolumesByPoolId(ctx *c.Context, poolID string) ([]string, error) {
 	vols, err := c.ListVolumes(ctx)
 	if err != nil {
 		return nil, err
 	}
 	var resvols []string
 	for _, v := range vols {
-		if v.ProfileId == prfID {
+		if v.PoolId == poolID {
 			resvols = append(resvols, v.Name)
 		}
 	}
@@ -1555,8 +1300,6 @@ func (volume VolumeSlice) Less(i, j int) bool {
 		return volume[i].Status < volume[j].Status
 	case "AVAILABILITYZONE":
 		return volume[i].AvailabilityZone < volume[j].AvailabilityZone
-	case "PROFILEID":
-		return volume[i].ProfileId < volume[j].ProfileId
 	case "TENANTID":
 		return volume[i].TenantId < volume[j].TenantId
 	case "SIZE":
@@ -1596,8 +1339,6 @@ func (c *Client) FindVolumeValue(k string, p *model.VolumeSpec) string {
 		return p.Status
 	case "PoolId":
 		return p.PoolId
-	case "ProfileId":
-		return p.ProfileId
 	case "GroupId":
 		return p.GroupId
 	case "DurableName":
@@ -1671,9 +1412,6 @@ func (c *Client) UpdateVolume(ctx *c.Context, vol *model.VolumeSpec) (*model.Vol
 	}
 	if vol.PoolId != "" {
 		result.PoolId = vol.PoolId
-	}
-	if vol.ProfileId != "" {
-		result.ProfileId = vol.ProfileId
 	}
 	if vol.Size != 0 {
 		result.Size = vol.Size
@@ -2320,7 +2058,6 @@ var replicationSortKey2Func = map[string]ReplicationsCompareFunc{
 	"AVAILABILITYZONE": func(a *model.ReplicationSpec, b *model.ReplicationSpec) bool {
 		return a.AvailabilityZone > b.AvailabilityZone
 	},
-	"PROFILEID": func(a *model.ReplicationSpec, b *model.ReplicationSpec) bool { return a.ProfileId > b.ProfileId },
 	"TENANTID":  func(a *model.ReplicationSpec, b *model.ReplicationSpec) bool { return a.TenantId > b.TenantId },
 	"POOLID":    func(a *model.ReplicationSpec, b *model.ReplicationSpec) bool { return a.PoolId > b.PoolId },
 }
@@ -2378,9 +2115,6 @@ func (c *Client) UpdateReplication(ctx *c.Context, replicationId string, input *
 	r, err := c.GetReplication(ctx, replicationId)
 	if err != nil {
 		return nil, err
-	}
-	if input.ProfileId != "" {
-		r.ProfileId = input.ProfileId
 	}
 	if input.Name != "" {
 		r.Name = input.Name

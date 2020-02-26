@@ -30,8 +30,8 @@ import (
 	"github.com/opensds/opensds/pkg/model"
 	pb "github.com/opensds/opensds/pkg/model/proto"
 	. "github.com/opensds/opensds/testutils/collection"
-	ctrtest "github.com/opensds/opensds/testutils/controller/testing"
 	dbtest "github.com/opensds/opensds/testutils/db/testing"
+	docktest "github.com/opensds/opensds/testutils/dock/testing"
 )
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -51,7 +51,7 @@ func init() {
 }
 
 func NewFakeFileSharePortal() *FileSharePortal {
-	mockClient := new(ctrtest.Client)
+	mockClient := new(docktest.Client)
 
 	mockClient.On("Connect", "localhost:50049").Return(nil)
 	mockClient.On("Close").Return(nil)
@@ -63,7 +63,7 @@ func NewFakeFileSharePortal() *FileSharePortal {
 	}).Return(&pb.GenericResponse{}, nil)
 
 	return &FileSharePortal{
-		CtrClient: mockClient,
+		DockClient: mockClient,
 	}
 }
 
@@ -83,7 +83,6 @@ var (
 		AvailabilityZone: "unknown",
 		Status:           "available",
 		PoolId:           "831fa5fb-17cf-4410-bec6-1f4b06208eef",
-		ProfileId:        "d3a109ff-3e51-4625-9054-32604c79fa90",
 	}
 	fakeFileShares = []*model.FileShareSpec{fakeFileShare}
 )

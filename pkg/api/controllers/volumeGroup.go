@@ -23,8 +23,8 @@ import (
 	"github.com/opensds/opensds/pkg/api/policy"
 	"github.com/opensds/opensds/pkg/api/util"
 	c "github.com/opensds/opensds/pkg/context"
-	"github.com/opensds/opensds/pkg/controller/client"
 	"github.com/opensds/opensds/pkg/db"
+	"github.com/opensds/opensds/pkg/dock/client"
 	"github.com/opensds/opensds/pkg/model"
 	pb "github.com/opensds/opensds/pkg/model/proto"
 	. "github.com/opensds/opensds/pkg/utils/config"
@@ -32,14 +32,14 @@ import (
 
 func NewVolumeGroupPortal() *VolumeGroupPortal {
 	return &VolumeGroupPortal{
-		CtrClient: client.NewClient(),
+		DockClient: client.NewClient(),
 	}
 }
 
 type VolumeGroupPortal struct {
 	BasePortal
 
-	CtrClient client.Client
+	DockClient client.Client
 }
 
 func (v *VolumeGroupPortal) CreateVolumeGroup() {
@@ -81,7 +81,7 @@ func (v *VolumeGroupPortal) CreateVolumeGroup() {
 	// Volume group creation request is sent to the Dock. Dock will set
 	// volume group status to 'available' after volume group creation operation
 	// is completed.
-	if err = v.CtrClient.Connect(CONF.OsdsLet.ApiEndpoint); err != nil {
+	if err = v.DockClient.Connect(CONF.OsdsDock.ApiEndpoint); err != nil {
 		log.Error("when connecting controller client:", err)
 		return
 	}
@@ -95,7 +95,7 @@ func (v *VolumeGroupPortal) CreateVolumeGroup() {
 		RemoveVolumes:    result.RemoveVolumes,
 		Context:          ctx.ToJson(),
 	}
-	response, err := v.CtrClient.CreateVolumeGroup(context.Background(), opt)
+	response, err := v.DockClient.CreateVolumeGroup(context.Background(), opt)
 	if err != nil {
 		log.Error("create volume group failed in controller service:", err)
 		return
@@ -162,7 +162,7 @@ func (v *VolumeGroupPortal) UpdateVolumeGroup() {
 	// Volume group update request is sent to the Dock. Dock will set
 	// volume group status to 'available' after volume group creation operation
 	// is completed.
-	if err = v.CtrClient.Connect(CONF.OsdsLet.ApiEndpoint); err != nil {
+	if err = v.DockClient.Connect(CONF.OsdsDock.ApiEndpoint); err != nil {
 		log.Error("when connecting controller client:", err)
 		return
 	}
@@ -174,7 +174,7 @@ func (v *VolumeGroupPortal) UpdateVolumeGroup() {
 		PoolId:        poolId,
 		Context:       ctx.ToJson(),
 	}
-	response, err := v.CtrClient.UpdateVolumeGroup(context.Background(), opt)
+	response, err := v.DockClient.UpdateVolumeGroup(context.Background(), opt)
 	if err != nil {
 		log.Error("update volume group failed in controller service:", err)
 		return
@@ -213,7 +213,7 @@ func (v *VolumeGroupPortal) DeleteVolumeGroup() {
 	// NOTE:The real volume group deletion process.
 	// Volume group deletion request is sent to the Dock. Dock will remove
 	// volume group record after volume group deletion operation is completed.
-	if err = v.CtrClient.Connect(CONF.OsdsLet.ApiEndpoint); err != nil {
+	if err = v.DockClient.Connect(CONF.OsdsDock.ApiEndpoint); err != nil {
 		log.Error("when connecting controller client:", err)
 		return
 	}
@@ -223,7 +223,7 @@ func (v *VolumeGroupPortal) DeleteVolumeGroup() {
 		PoolId:  vg.PoolId,
 		Context: ctx.ToJson(),
 	}
-	response, err := v.CtrClient.DeleteVolumeGroup(context.Background(), opt)
+	response, err := v.DockClient.DeleteVolumeGroup(context.Background(), opt)
 	if err != nil {
 		log.Error("delete volume group failed in controller service:", err)
 		return

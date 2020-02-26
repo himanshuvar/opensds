@@ -30,8 +30,8 @@ import (
 	"github.com/opensds/opensds/pkg/model"
 	pb "github.com/opensds/opensds/pkg/model/proto"
 	. "github.com/opensds/opensds/testutils/collection"
-	ctrtest "github.com/opensds/opensds/testutils/controller/testing"
 	dbtest "github.com/opensds/opensds/testutils/db/testing"
+	docktest "github.com/opensds/opensds/testutils/dock/testing"
 )
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -53,7 +53,7 @@ func init() {
 }
 
 func NewFakeVolumePortal() *VolumePortal {
-	mockClient := new(ctrtest.Client)
+	mockClient := new(docktest.Client)
 
 	mockClient.On("Connect", "localhost:50049").Return(nil)
 	mockClient.On("Close").Return(nil)
@@ -64,14 +64,13 @@ func NewFakeVolumePortal() *VolumePortal {
 		Id:      "bd5b12a8-a101-11e7-941e-d77981b584d8",
 		Size:    int64(20),
 		Context: c.NewAdminContext().ToJson(),
-		Profile: SampleProfiles[0].ToJson(),
 	}).Return(&pb.GenericResponse{}, nil)
 	mockClient.On("DeleteVolume", ctx.Background(), &pb.DeleteVolumeOpts{
 		Context: c.NewAdminContext().ToJson(),
 	}).Return(&pb.GenericResponse{}, nil)
 
 	return &VolumePortal{
-		CtrClient: mockClient,
+		DockClient: mockClient,
 	}
 }
 
@@ -91,7 +90,6 @@ var (
 		AvailabilityZone: "unknown",
 		Status:           "available",
 		PoolId:           "831fa5fb-17cf-4410-bec6-1f4b06208eef",
-		ProfileId:        "d3a109ff-3e51-4625-9054-32604c79fa90",
 	}
 	fakeVolumes = []*model.VolumeSpec{fakeVolume}
 )
@@ -255,7 +253,6 @@ func TestExtendVolume(t *testing.T) {
 		mockClient := new(dbtest.Client)
 		mockClient.On("GetVolume", c.NewAdminContext(), "bd5b12a8-a101-11e7-941e-d77981b584d8").Return(&SampleVolumes[0], nil)
 		mockClient.On("ExtendVolume", c.NewAdminContext(), &expected).Return(&expected, nil)
-		mockClient.On("GetProfile", c.NewAdminContext(), SampleReplications[0].ProfileId).Return(&SampleProfiles[0], nil)
 		db.C = mockClient
 
 		r, _ := http.NewRequest("POST", "/v1beta/block/volumes/bd5b12a8-a101-11e7-941e-d77981b584d8/resize", bytes.NewBuffer(jsonStr))
@@ -278,7 +275,6 @@ func TestExtendVolume(t *testing.T) {
 		mockClient := new(dbtest.Client)
 		mockClient.On("GetVolume", c.NewAdminContext(), "bd5b12a8-a101-11e7-941e-d77981b584d8").Return(&SampleVolumes[0], nil)
 		mockClient.On("ExtendVolume", c.NewAdminContext(), &expected).Return(&expected, nil)
-		mockClient.On("GetProfile", c.NewAdminContext(), SampleReplications[0].ProfileId).Return(&SampleProfiles[0], nil)
 		db.C = mockClient
 
 		r, _ := http.NewRequest("POST", "/v1beta/block/volumes/bd5b12a8-a101-11e7-941e-d77981b584d8/resize", bytes.NewBuffer(jsonStr))

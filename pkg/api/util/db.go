@@ -47,12 +47,6 @@ func CreateFileShareAclDBEntry(ctx *c.Context, in *model.FileShareAclSpec) (*mod
 		in.UpdatedAt = time.Now().Format(constants.TimeFormat)
 	}
 	in.Status = model.FileShareAclAvailable
-	// validate profileId
-	if in.ProfileId == "" {
-		errMsg := "profile id can not be empty when creating fileshare acl in db!"
-		log.Error(errMsg)
-		return nil, errors.New(errMsg)
-	}
 	// validate type
 	if in.Type != "ip" {
 		errMsg := fmt.Sprintf("invalid fileshare type: %v. Supported type is: ip", in.Type)
@@ -148,9 +142,9 @@ func CreateFileShareDBEntry(ctx *c.Context, in *model.FileShareSpec) (*model.Fil
 	if in.Id == "" {
 		in.Id = uuid.NewV4().String()
 	}
-	// validate profileId
-	if in.ProfileId == "" {
-		errMsg := "profile id can not be empty when creating fileshare in db!"
+	// validate poolId
+	if in.PoolId == "" {
+		errMsg := "pool id can not be empty when creating fileshare in db!"
 		log.Error(errMsg)
 		return nil, errors.New(errMsg)
 	}
@@ -251,12 +245,6 @@ func CreateFileShareSnapshotDBEntry(ctx *c.Context, in *model.FileShareSnapshotS
 		log.Error(errMsg)
 		return nil, errors.New(errMsg)
 	}
-	// validate profileId
-	if in.ProfileId == "" {
-		errMsg := "profile id can not be empty when creating fileshare snapshot in db!"
-		log.Error(errMsg)
-		return nil, errors.New(errMsg)
-	}
 
 	// Check existence of fileshare snapshot name #931
 	filesnaps, err := db.C.ListFileShareSnapshots(ctx)
@@ -345,8 +333,8 @@ func CreateVolumeDBEntry(ctx *c.Context, in *model.VolumeSpec) (*model.VolumeSpe
 		log.Error(errMsg)
 		return nil, errors.New(errMsg)
 	}
-	if in.ProfileId == "" {
-		errMsg := "profile id can not be empty when creating volume in db"
+	if in.PoolId == "" {
+		errMsg := "pool id can not be empty when creating volume in db"
 		log.Error(errMsg)
 		return nil, errors.New(errMsg)
 	}
@@ -469,11 +457,6 @@ func ExtendVolumeDBEntry(ctx *c.Context, volID string, in *model.ExtendVolumeSpe
 // to be creating in the DB, the real operation would be executed in another new
 // thread.
 func CreateVolumeSnapshotDBEntry(ctx *c.Context, in *model.VolumeSnapshotSpec) (*model.VolumeSnapshotSpec, error) {
-	if in.ProfileId == "" {
-		errMsg := "profile id can not be empty when creating volume snapshot in db"
-		log.Error(errMsg)
-		return nil, errors.New(errMsg)
-	}
 	vol, err := db.C.GetVolume(ctx, in.VolumeId)
 	if err != nil {
 		log.Error("get volume failed in create volume snapshot method: ", err)
@@ -688,8 +671,8 @@ func FailoverReplicationDBEntry(ctx *c.Context, in *model.ReplicationSpec, secon
 // to be creating in the DB, the real deletion operation would be
 // executed in another new thread.
 func CreateVolumeGroupDBEntry(ctx *c.Context, in *model.VolumeGroupSpec) (*model.VolumeGroupSpec, error) {
-	if len(in.Profiles) == 0 {
-		msg := fmt.Sprintf("profiles must be provided to create volume group.")
+	if len(in.PoolId) == 0 {
+		msg := fmt.Sprintf("pool must be provided to create volume group.")
 		log.Error(msg)
 		return nil, errors.New(msg)
 	}
@@ -730,7 +713,6 @@ func UpdateVolumeGroupDBEntry(ctx *c.Context, vgUpdate *model.VolumeGroupSpec) (
 	} else {
 		description = vgUpdate.Description
 	}
-	vgUpdate.Profiles = vg.Profiles
 	vgUpdate.PoolId = vg.PoolId
 
 	var invalidUuids []string
@@ -826,12 +808,6 @@ func ValidateAddVolumes(ctx *c.Context, volumes []*model.VolumeSpec, addVolumes 
 		}
 		if addVolRef.GroupId != "" {
 			return nil, fmt.Errorf("cannot add volume %s to group %s because it is already in group %s", addVolRef.Id, vg.Id, addVolRef.GroupId)
-		}
-		if addVolRef.ProfileId == "" {
-			return nil, fmt.Errorf("cannot add volume %s to group %s , volume has no profile.", addVolRef.Id, vg.Id)
-		}
-		if !utils.Contained(addVolRef.ProfileId, vg.Profiles) {
-			return nil, fmt.Errorf("cannot add volume %s to group %s , volume profile is not supported by the group.", addVolRef.Id, vg.Id)
 		}
 		if addVolRef.Status != model.VolumeAvailable && addVolRef.Status != model.VolumeInUse {
 			return nil, fmt.Errorf("cannot add volume %s to group %s because volume is in invalid status %s", addVolRef.Id, vg.Id, addVolRef.Status)
