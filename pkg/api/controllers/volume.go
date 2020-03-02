@@ -23,6 +23,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"github.com/opensds/opensds/pkg/dock"
 	"github.com/opensds/opensds/pkg/utils/constants"
 
 	log "github.com/golang/glog"
@@ -122,8 +123,14 @@ func (v *VolumePortal) CreateVolume() {
 		Metadata:          result.Metadata,
 		SnapshotFromCloud: result.SnapshotFromCloud,
 		Context:           ctx.ToJson(),
+		DriverName: "lvm",
+		PoolName: "opensds-volumes",
 	}
-	response, err := v.DockClient.CreateVolume(context.Background(), opt)
+	ds := dock.NewDockServer(CONF.OsdsDock.DockType, CONF.OsdsDock.ApiEndpoint)
+
+	//response, err := v.DockClient.CreateVolume(context.Background(), opt)
+	response, err := ds.CreateVolume(context.Background(), opt)
+	log.Info("create volume response:", response)
 	if err != nil {
 		log.Error("create volume failed in dock service:", err)
 		return
